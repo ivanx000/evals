@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.eval-cache/
+results/
+*.env
+.env
+.evalrc.json

@@ -1,0 +1,32 @@
+{
+  "name": "llm-eval",
+  "version": "0.1.0",
+  "description": "LLM Evaluation Framework CLI — pytest for LLM outputs",
+  "main": "dist/cli.js",
+  "bin": {
+    "eval": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/cli.ts",
+    "start": "node dist/cli.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.56.0",
+    "cli-table3": "^0.6.3",
+    "commander": "^12.1.0",
+    "js-yaml": "^4.1.0",
+    "openai": "^4.85.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

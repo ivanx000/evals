@@ -1,0 +1,66 @@
+name: "Summarization Quality"
+description: "Evaluate how well the model summarizes text under various constraints"
+provider: anthropic
+model: claude-haiku-4-5
+system_prompt: "You are a concise summarization assistant. Always respond with just the summary, no preamble."
+max_tokens: 512
+
+cases:
+  - id: "short-summary-word-limit"
+    prompt: |
+      Summarize the following in under 50 words:
+
+      The Amazon rainforest, often referred to as the "lungs of the Earth," produces 20% of the world's
+      oxygen and is home to 10% of all species on the planet. Deforestation threatens not only biodiversity
+      but also global climate stability. Scientists warn that continued destruction could trigger irreversible
+      tipping points within decades.
+    criteria:
+      - type: max_words
+        value: 50
+      - type: llm_judge
+        rubric: "The summary accurately captures the key points: Amazon produces oxygen, hosts biodiversity, and faces deforestation threats. It should be coherent and informative."
+        pass_threshold: 3
+
+  - id: "contains-key-term"
+    prompt: |
+      Summarize this paragraph in 1-2 sentences:
+
+      Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to produce
+      oxygen and energy in the form of sugar. This fundamental biological process is the primary source
+      of oxygen in Earth's atmosphere and forms the base of most food chains.
+    criteria:
+      - type: contains
+        value: photosynthesis
+        case_sensitive: false
+      - type: max_words
+        value: 40
+      - type: llm_judge
+        rubric: "The summary should mention that plants convert sunlight/CO2/water into oxygen and sugar. It should be accurate and succinct."
+        pass_threshold: 3
+
+  - id: "format-regex-check"
+    prompt: |
+      Provide a 3-bullet summary of the following:
+
+      Machine learning has transformed industries from healthcare to finance. In healthcare, AI models
+      detect cancers earlier than human radiologists. In finance, algorithmic trading handles over 70%
+      of market volume. Meanwhile, natural language processing has made voice assistants and translation
+      tools mainstream consumer products.
+    criteria:
+      - type: regex
+        value: "^[-•*]|^\\d+\\."
+        flags: "m"
+      - type: max_words
+        value: 80
+      - type: llm_judge
+        rubric: "The response should be formatted as bullet points and cover at least 2 of these 3 domains: healthcare AI, financial AI, or NLP/voice assistants."
+        pass_threshold: 3
+
+  - id: "exact-length-constraint"
+    prompt: "Summarize the concept of supply and demand in exactly one sentence."
+    criteria:
+      - type: max_words
+        value: 30
+      - type: llm_judge
+        rubric: "The single sentence should correctly explain that price is determined by the balance between how much producers supply and how much consumers demand."
+        pass_threshold: 4
