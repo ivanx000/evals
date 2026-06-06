@@ -5,3 +5,4 @@ results/
 *.env
 .env
 .evalrc.json
+.claude/logs/

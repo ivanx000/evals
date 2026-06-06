@@ -10,7 +10,10 @@
     "build": "tsc",
     "dev": "ts-node src/cli.ts",
     "start": "node dist/cli.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "test": "echo 'No tests configured yet — add jest or vitest when ready' && exit 0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.56.0",
@@ -23,6 +26,9 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.14.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.2"
   },

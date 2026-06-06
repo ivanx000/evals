@@ -1,0 +1,149 @@
+# Getting Started
+
+## Installation
+
+```bash
+git clone https://github.com/ivanx000/LLM-Evaluation-CLI
+cd LLM-Evaluation-CLI
+npm install
+npm run build
+```
+
+Set your API key(s):
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk-...       # optional, only if using OpenAI models
+```
+
+Optionally, install the `eval` binary globally:
+
+```bash
+npm link
+eval --help
+```
+
+Or use it directly without installing:
+
+```bash
+node dist/cli.js --help
+```
+
+## Config file
+
+Copy `.evalrc.json.example` to `.evalrc.json` and adjust:
+
+```json
+{
+  "default_provider": "anthropic",
+  "default_model": "claude-haiku-4-5",
+  "judge_model": "claude-opus-4-8",
+  "results_dir": "./results",
+  "cache_enabled": true
+}
+```
+
+Config is auto-discovered in the working directory. Override with `--config <path>`.
+
+## Commands
+
+### `eval run <suite.yaml>`
+
+Run all cases in a suite and display a results table.
+
+```bash
+eval run examples/summarization.yaml
+```
+
+**Options:**
+
+| Flag | Description |
+|---|---|
+| `-m, --model <id>` | Override the model in the suite YAML |
+| `-w, --watch` | Re-run automatically when the YAML file is saved |
+| `--no-cache` | Skip the semantic cache and always call the API |
+| `-v, --verbose` | Show full model outputs and LLM judge reasoning |
+| `--json <path>` | Write the raw JSON result to a specific path |
+| `-c, --config <path>` | Use a specific config file |
+
+### `eval compare <suite.yaml> --models <m1,m2,...>`
+
+Run the same suite against multiple models and display a side-by-side comparison.
+
+```bash
+eval compare examples/summarization.yaml \
+  --models claude-haiku-4-5,claude-sonnet-4-6,claude-opus-4-8
+```
+
+```bash
+eval compare examples/summarization.yaml \
+  --models gpt-4o-mini,gpt-4o \
+  --provider openai
+```
+
+**Options:**
+
+| Flag | Description |
+|---|---|
+| `--models <ids>` | **Required.** Comma-separated model IDs |
+| `--provider <name>` | Provider to use for all models (`anthropic` \| `openai`) |
+| `--no-cache` | Disable semantic cache |
+| `-v, --verbose` | Show full outputs |
+
+### `eval report`
+
+List stored results from the `results/` directory.
+
+```bash
+eval report             # last 10 results
+eval report --last 5
+eval report --suite summarization
+```
+
+**Options:**
+
+| Flag | Description |
+|---|---|
+| `-n, --last <n>` | Show last N results (default: 10) |
+| `--suite <name>` | Filter by suite name (partial match) |
+
+## Writing your first suite
+
+Create a YAML file:
+
+```yaml
+name: "My First Suite"
+provider: anthropic
+model: claude-haiku-4-5
+max_tokens: 256
+
+cases:
+  - id: "capital-france"
+    prompt: "What is the capital of France? Reply with just the city name."
+    criteria:
+      - type: exact_match
+        value: "Paris"
+      - type: max_words
+        value: 5
+```
+
+Run it:
+
+```bash
+eval run my-suite.yaml
+```
+
+## Semantic cache
+
+All `(model, prompt, system_prompt, temperature, max_tokens)` tuples are cached in `.eval-cache/`.
+Repeated runs with the same inputs are free. Use `--no-cache` to bypass.
+
+## CI integration
+
+Exit code is `1` when any case fails, `0` when all pass:
+
+```bash
+eval run my-suite.yaml && echo "All green"
+```
+
+Results JSON is always written to `./results/` for artifact storage.
