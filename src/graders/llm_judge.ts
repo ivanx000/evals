@@ -1,8 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { LLMJudgeCriteria, GraderResult } from "../types.js";
 
-const client = new Anthropic();
-
 const JUDGE_SYSTEM = `You are a strict LLM output evaluator. Score the given output on a scale of 1-5 based on the rubric provided.
 
 Respond ONLY with a JSON object in this exact format (no markdown, no extra text):
@@ -18,19 +16,38 @@ Scoring guide:
 export async function gradeLLMJudge(
   output: string,
   criteria: LLMJudgeCriteria,
-  judgeModel?: string
+  judgeModel?: string,
+  apiKey?: string
 ): Promise<GraderResult> {
-  const model = criteria.model ?? judgeModel ?? "claude-opus-4-8";
-  const passThreshold = criteria.pass_threshold ?? 3;
+  try {
+    if (typeof output !== "string") {
+      return { criteria_type: "llm_judge", passed: false, score: 0, error: "Output is not a string" };
+    }
 
-  const userMessage = `Rubric: ${criteria.rubric}
+    const model = criteria.model ?? judgeModel ?? "claude-opus-4-8";
+    const passThreshold = criteria.pass_threshold ?? 3;
+
+    const resolvedApiKey = apiKey ?? process.env.ANTHROPIC_API_KEY;
+    if (!resolvedApiKey) {
+      return {
+        criteria_type: "llm_judge",
+        passed: false,
+        score: 0,
+        error:
+          "ANTHROPIC_API_KEY is not set. llm_judge always uses Anthropic.\n" +
+          "  Set it with: export ANTHROPIC_API_KEY=sk-ant-...",
+      };
+    }
+
+    const client = new Anthropic({ apiKey: resolvedApiKey });
+
+    const userMessage = `Rubric: ${criteria.rubric}
 
 Output to evaluate:
 """
 ${output}
 """`;
 
-  try {
     const response = await client.messages.create({
       model,
       max_tokens: 256,
@@ -59,7 +76,7 @@ ${output}
       criteria_type: "llm_judge",
       passed: false,
       score: 0,
-      reasoning: `Judge error: ${(err as Error).message}`,
+      error: `Judge error: ${(err as Error).message}`,
     };
   }
 }

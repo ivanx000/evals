@@ -21,14 +21,47 @@ export interface RunOptions {
   watch?: boolean;
   noCache?: boolean;
   verbose?: boolean;
+  timeout?: number;
+  concurrency?: number;
+  filter?: string;
   onCaseResult?: (result: CaseResult, index: number, total: number) => void;
 }
 
+// ─── Suite loading ─────────────────────────────────────────────────────────────
+
 export function loadSuite(suitePath: string): EvalSuite {
-  const raw = fs.readFileSync(suitePath, "utf-8");
-  const parsed = yaml.load(raw);
-  return EvalSuiteSchema.parse(parsed);
+  let raw: string;
+  try {
+    raw = fs.readFileSync(suitePath, "utf-8");
+  } catch {
+    throw new Error(
+      `Cannot read suite file: ${suitePath}\n  Check the file exists and is readable.`
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = yaml.load(raw);
+  } catch (err) {
+    throw new Error(
+      `Invalid YAML in ${path.basename(suitePath)}: ${(err as Error).message}`
+    );
+  }
+
+  const result = EvalSuiteSchema.safeParse(parsed);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((issue) => `  • ${issue.path.join(".") || "(root)"}: ${issue.message}`)
+      .join("\n");
+    throw new Error(
+      `Suite validation failed in ${path.basename(suitePath)}:\n${issues}`
+    );
+  }
+
+  return result.data;
 }
+
+// ─── Provider factory ─────────────────────────────────────────────────────────
 
 function makeProvider(provider: string, config: EvalConfig) {
   if (provider === "openai") {
@@ -36,6 +69,36 @@ function makeProvider(provider: string, config: EvalConfig) {
   }
   return new AnthropicProvider(config.anthropic_api_key);
 }
+
+// ─── Semaphore for concurrency control ────────────────────────────────────────
+
+class Semaphore {
+  private count: number;
+  private queue: Array<() => void> = [];
+
+  constructor(limit: number) {
+    this.count = Math.max(1, limit);
+  }
+
+  acquire(): Promise<void> {
+    if (this.count > 0) {
+      this.count--;
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => this.queue.push(resolve));
+  }
+
+  release(): void {
+    const next = this.queue.shift();
+    if (next) {
+      next();
+    } else {
+      this.count++;
+    }
+  }
+}
+
+// ─── Case execution ───────────────────────────────────────────────────────────
 
 async function runCase(
   evalCase: EvalCase,
@@ -45,8 +108,7 @@ async function runCase(
   config: EvalConfig,
   options: RunOptions
 ): Promise<CaseResult> {
-  const caseId =
-    evalCase.id ?? `case-${randomUUID().slice(0, 8)}`;
+  const caseId = evalCase.id ?? `case-${randomUUID().slice(0, 8)}`;
 
   const callOptions: ProviderCallOptions = {
     model,
@@ -66,7 +128,6 @@ async function runCase(
   const start = Date.now();
 
   try {
-    // Check semantic cache
     const cacheEnabled = config.cache_enabled && !options.noCache;
     if (cacheEnabled) {
       const hit = cacheGet(callOptions);
@@ -99,7 +160,7 @@ async function runCase(
 
   const grader_results = error
     ? []
-    : await runGraders(output, evalCase.criteria, config.judge_model);
+    : await runGraders(output, evalCase.criteria, config.judge_model, config.anthropic_api_key);
 
   const passed = !error && grader_results.every((r) => r.passed);
 
@@ -120,6 +181,46 @@ async function runCase(
   };
 }
 
+async function runCaseWithTimeout(
+  evalCase: EvalCase,
+  suite: EvalSuite,
+  model: string,
+  provider: string,
+  config: EvalConfig,
+  options: RunOptions
+): Promise<CaseResult> {
+  const timeoutMs = options.timeout ?? 30_000;
+  const caseId = evalCase.id ?? `case-${randomUUID().slice(0, 8)}`;
+
+  const timeoutResult: CaseResult = {
+    case_id: caseId,
+    prompt: evalCase.prompt,
+    model,
+    provider,
+    output: "",
+    grader_results: [],
+    passed: false,
+    latency_ms: timeoutMs,
+    error: `Timeout: case exceeded ${timeoutMs}ms`,
+    cached: false,
+  };
+
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<CaseResult>((resolve) => {
+    timeoutId = setTimeout(() => resolve(timeoutResult), timeoutMs);
+  });
+
+  return Promise.race([
+    runCase(evalCase, suite, model, provider, config, options).then((r) => {
+      clearTimeout(timeoutId);
+      return r;
+    }),
+    timeoutPromise,
+  ]);
+}
+
+// ─── Suite execution ──────────────────────────────────────────────────────────
+
 export async function runSuite(
   suite: EvalSuite,
   config: EvalConfig,
@@ -129,16 +230,33 @@ export async function runSuite(
     options.model ?? suite.model ?? config.default_model ?? "claude-opus-4-8";
   const provider = suite.provider ?? config.default_provider ?? "anthropic";
 
+  const filteredCases = options.filter
+    ? suite.cases.filter((c) => {
+        const filterLower = options.filter!.toLowerCase();
+        const matchesId = c.id?.toLowerCase().includes(filterLower) ?? false;
+        const matchesTags = c.tags?.some((t) => t.toLowerCase().includes(filterLower)) ?? false;
+        return matchesId || matchesTags;
+      })
+    : suite.cases;
+
   const runId = randomUUID();
   const timestamp = new Date().toISOString();
-  const cases: CaseResult[] = [];
 
-  for (let i = 0; i < suite.cases.length; i++) {
-    const evalCase = suite.cases[i];
-    const result = await runCase(evalCase, suite, model, provider, config, options);
-    cases.push(result);
-    options.onCaseResult?.(result, i, suite.cases.length);
-  }
+  const concurrency = options.concurrency ?? 1;
+  const sem = new Semaphore(concurrency);
+
+  const casePromises = filteredCases.map(async (evalCase, i) => {
+    await sem.acquire();
+    try {
+      const result = await runCaseWithTimeout(evalCase, suite, model, provider, config, options);
+      options.onCaseResult?.(result, i, filteredCases.length);
+      return result;
+    } finally {
+      sem.release();
+    }
+  });
+
+  const cases = await Promise.all(casePromises);
 
   const passed = cases.filter((c) => c.passed).length;
   const failed = cases.length - passed;
@@ -160,6 +278,8 @@ export async function runSuite(
     cases,
   };
 }
+
+// ─── Result persistence ───────────────────────────────────────────────────────
 
 export function saveResult(result: RunResult, resultsDir: string): string {
   if (!fs.existsSync(resultsDir)) {

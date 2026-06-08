@@ -8,27 +8,36 @@ import { gradeLLMJudge } from "./llm_judge.js";
 export async function runGraders(
   output: string,
   criteriaList: Criteria[],
-  judgeModel?: string
+  judgeModel?: string,
+  judgeApiKey?: string
 ): Promise<GraderResult[]> {
   const results: GraderResult[] = [];
 
   for (const criteria of criteriaList) {
-    switch (criteria.type) {
-      case "exact_match":
-        results.push(gradeExactMatch(output, criteria));
-        break;
-      case "contains":
-        results.push(gradeContains(output, criteria));
-        break;
-      case "max_words":
-        results.push(gradeMaxWords(output, criteria));
-        break;
-      case "regex":
-        results.push(gradeRegex(output, criteria));
-        break;
-      case "llm_judge":
-        results.push(await gradeLLMJudge(output, criteria, judgeModel));
-        break;
+    try {
+      switch (criteria.type) {
+        case "exact_match":
+          results.push(gradeExactMatch(output, criteria));
+          break;
+        case "contains":
+          results.push(gradeContains(output, criteria));
+          break;
+        case "max_words":
+          results.push(gradeMaxWords(output, criteria));
+          break;
+        case "regex":
+          results.push(gradeRegex(output, criteria));
+          break;
+        case "llm_judge":
+          results.push(await gradeLLMJudge(output, criteria, judgeModel, judgeApiKey));
+          break;
+      }
+    } catch (err) {
+      results.push({
+        criteria_type: criteria.type,
+        passed: false,
+        error: `Grader "${criteria.type}" threw unexpectedly: ${(err as Error).message}`,
+      });
     }
   }
 
