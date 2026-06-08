@@ -89,7 +89,7 @@ Fires after edits to `src/` or `tests/`. Runs `npm test`.
 - If tests pass: prints `✅ All tests passing` to Claude's context
 - If tests fail: prints the last 30 lines of output and tells Claude to fix before proceeding
 
-Currently no tests are configured. Add test files to `tests/` and the hook will pick them up automatically.
+Tests live in `tests/` and run with vitest. Add `*.test.ts` files there and the hook picks them up automatically.
 
 ## Development Workflow
 
@@ -98,22 +98,54 @@ npm run build      # compile TypeScript → dist/
 npm run typecheck  # tsc --noEmit (fast, no output)
 npm run lint       # eslint src --ext .ts
 npm run lint:fix   # eslint src --ext .ts --fix
-npm test           # runs test suite (if configured)
+npm test           # vitest run --reporter=verbose
+npm run test:watch # vitest (interactive watch mode)
 ```
+
+## Key design decisions (hardening phase)
+
+- **Graders never throw.** Every grader wraps its logic in try/catch and returns
+  `{ passed: false, error: "..." }` on failure. `runGraders()` also wraps each
+  dispatch so one broken grader can't prevent others from running.
+
+- **llm_judge creates its Anthropic client per-call** (not module-level) so that
+  the Anthropic SDK can be cleanly mocked in tests via `vi.mock('@anthropic-ai/sdk')`.
+
+- **Provider constructors throw on missing API key.** This gives a clear error
+  immediately, but the CLI also guards before calling `runSuite()` so the error
+  is surfaced before any case processing begins.
+
+- **Retry uses exponential backoff with jitter.** See `src/providers/retry.ts`.
+  Max 3 retries. Retryable: 429, 500, 502, 503, network errors. 401 is not retried.
+
+- **Timeout uses Promise.race**, not AbortController (providers don't support
+  cancellation). The race resolves to a failed CaseResult — it never rejects —
+  so the runner always gets a valid object to aggregate.
+
+- **Concurrency uses a Semaphore + Promise.all**. Results are always in suite
+  input order because Promise.all preserves order.
+
+- **YAML errors are field-level.** `loadSuite()` uses `safeParse` and formats
+  each Zod issue as `• field.path: message` on separate lines.
 
 ## Extending the Framework
 
 ### Adding a grader
-1. Create `src/graders/<name>.ts`
+1. Create `src/graders/<name>.ts` — wrap all logic in try/catch, return
+   `{ criteria_type, passed, error }` on failure, never throw
 2. Add Zod schema + type to `src/types.ts` and include in `CriteriaSchema`
 3. Register in `src/graders/index.ts` `runGraders()` switch
-4. Update `docs/graders.md`
+4. Add unit tests in `tests/graders/<name>.test.ts`
+5. Update `docs/graders.md`
 
 ### Adding a provider
 1. Create `src/providers/<name>.ts` implementing `LLMProvider`
+   — validate API key in constructor; use `withRetry()` for the API call;
+   throw with a clear message on 401/429/5xx
 2. Add pricing to `src/types.ts`
 3. Register in `src/runner.ts` `makeProvider()`
-4. Update `docs/providers.md`
+4. Add API key guard in `cli.ts` `checkApiKeys()`
+5. Update `docs/providers.md`
 
 ### Adding a CLI command
 1. Add `.command()` to `src/cli.ts`

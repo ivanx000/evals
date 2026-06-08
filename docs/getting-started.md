@@ -110,6 +110,8 @@ eval compare examples/summarization.yaml \
 | `--provider <name>` | Provider to use for all models (`anthropic` \| `openai`) |
 | `--no-cache` | Disable semantic cache |
 | `-v, --verbose` | Show full outputs |
+| `--timeout <ms>` | Per-case timeout in milliseconds (default: `30000`) |
+| `--concurrency <n>` | Run N cases in parallel per model (default: `1`) |
 
 ### `eval report`
 
@@ -159,12 +161,30 @@ eval run my-suite.yaml
 All `(model, prompt, system_prompt, temperature, max_tokens)` tuples are cached in `.eval-cache/`.
 Repeated runs with the same inputs are free. Use `--no-cache` to bypass.
 
+## API key setup
+
+Set your API keys as environment variables before running:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...   # required for Anthropic provider and llm_judge
+export OPENAI_API_KEY=sk-...          # required for OpenAI provider
+```
+
+If a required key is missing when a command is run, `eval` will print a clear error and exit with code 1 — it never reaches the API call and fails cryptically.
+
 ## CI integration
 
 Exit code is `1` when any case fails, `0` when all pass:
 
 ```bash
 eval run my-suite.yaml && echo "All green"
+```
+
+Use `--dry-run` in CI pre-flight to validate config before spending API quota:
+
+```bash
+eval run my-suite.yaml --dry-run  # validates YAML, exits 0 if valid
+eval run my-suite.yaml            # the real run
 ```
 
 Results JSON is always written to `./results/` for artifact storage.

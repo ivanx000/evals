@@ -3,6 +3,27 @@
 Each grader is a criterion type in the `criteria` array of an eval case.
 A case passes only when **all** of its criteria pass.
 
+## Result shape
+
+Every grader returns a `GraderResult` with this consistent shape:
+
+```ts
+{
+  criteria_type: string;   // e.g. "exact_match", "llm_judge"
+  passed: boolean;         // true if the criterion was met
+  score?: number;          // 1-5 for llm_judge only
+  reasoning?: string;      // judge reasoning for llm_judge
+  detail?: string;         // human-readable message for deterministic graders
+  error?: string;          // set instead of detail/reasoning when the grader itself failed
+}
+```
+
+When `error` is set, `passed` is always `false`. A grader error means the grader could not
+evaluate the output (e.g., invalid regex, missing API key) — it does not mean the output
+failed the criterion. The runner will still include the case result with the error message.
+
+Graders never throw — all errors are caught and returned in the `error` field.
+
 ## exact_match
 
 Checks that the model output equals `value` exactly (after trimming whitespace).
