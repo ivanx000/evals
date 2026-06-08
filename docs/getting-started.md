@@ -63,8 +63,29 @@ eval run examples/summarization.yaml
 | `-w, --watch` | Re-run automatically when the YAML file is saved |
 | `--no-cache` | Skip the semantic cache and always call the API |
 | `-v, --verbose` | Show full model outputs and LLM judge reasoning |
-| `--json <path>` | Write the raw JSON result to a specific path |
+| `-o, --output <path>` | Override the results save path (default: `./results/<timestamp>.json`) |
+| `--json <path>` | Also write the raw JSON result to a second path |
+| `--filter <substring>` | Run only cases whose `id` or tag contains the substring |
+| `--timeout <ms>` | Per-case API timeout in milliseconds (default: `30000`) |
+| `--concurrency <n>` | Run N cases in parallel (default: `1`) |
+| `--dry-run` | Validate the YAML and print what would run — no API calls made |
 | `-c, --config <path>` | Use a specific config file |
+
+**Examples:**
+
+```bash
+# Run only cases tagged "smoke" or with "smoke" in their ID
+eval run suite.yaml --filter smoke
+
+# Validate a suite without making any API calls
+eval run suite.yaml --dry-run
+
+# Run up to 4 cases at a time, with a 60-second timeout each
+eval run suite.yaml --concurrency 4 --timeout 60000
+
+# Save results to a specific path
+eval run suite.yaml --output ./ci-results/run.json
+```
 
 ### `eval compare <suite.yaml> --models <m1,m2,...>`
 
