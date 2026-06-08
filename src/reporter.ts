@@ -126,6 +126,14 @@ export function printRunResult(result: RunResult, verbose = false): void {
   ]);
 
   console.log(summaryTable.toString());
+
+  const avgLatency = result.total > 0 ? Math.round(result.total_latency_ms / result.total) : 0;
+  const passColor = result.pass_rate === 1 ? GREEN : result.pass_rate >= 0.5 ? YELLOW : RED;
+  console.log(
+    `${passColor}${result.passed}/${result.total} passed (${pct(result.pass_rate)})${RESET}` +
+    ` — avg latency: ${ms(avgLatency)}` +
+    ` — est. cost: ${usd(result.total_cost_usd)}`
+  );
   console.log("");
 }
 
