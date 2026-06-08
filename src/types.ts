@@ -94,6 +94,7 @@ export interface GraderResult {
   score?: number;      // 1-5 for llm_judge, else undefined
   reasoning?: string;  // for llm_judge
   detail?: string;     // human-readable detail for other graders
+  error?: string;      // set when grader failed to execute
 }
 
 // ─── Run result ────────────────────────────────────────────────────────────────
