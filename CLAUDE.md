@@ -8,6 +8,8 @@ Key directories:
 - `src/` — TypeScript source
 - `src/graders/` — individual grader implementations (one file per grader type)
 - `src/providers/` — LLM provider wrappers (Anthropic, OpenAI)
+- `src/dashboard/` — Express server + REST API for the web dashboard
+- `dashboard-ui/` — standalone Vite + React + TypeScript app (served by Express in prod)
 - `docs/` — reference documentation kept in sync with the code
 - `examples/` — example suite YAML files
 - `results/` — auto-saved JSON run results (gitignored)
@@ -100,7 +102,28 @@ npm run lint       # eslint src --ext .ts
 npm run lint:fix   # eslint src --ext .ts --fix
 npm test           # vitest run --reporter=verbose
 npm run test:watch # vitest (interactive watch mode)
+
+# Dashboard
+npm run dashboard:dev          # concurrently: Express API (3000) + Vite UI (5173)
+cd dashboard-ui && npm run build  # build UI to dashboard-ui/dist/
+eval dashboard                 # serve built UI + API, opens browser at localhost:3000
 ```
+
+## Dashboard architecture
+
+`eval dashboard` starts an Express server at `src/dashboard/server.ts` and opens the browser.
+
+The React app lives in `dashboard-ui/` (Vite + React + TypeScript + Tailwind + Recharts).
+
+REST API endpoints served by Express:
+- `GET /api/runs` — list all runs as summaries
+- `GET /api/runs/:id` — full run result JSON
+- `GET /api/compare?runIds=id1,id2` — merged case comparison
+
+In development, Vite proxies `/api/*` to Express (`vite.config.ts`).
+In production, Express serves `dashboard-ui/dist/` as static files.
+
+See `docs/dashboard.md` for full reference.
 
 ## Key design decisions (hardening phase)
 
