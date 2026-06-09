@@ -279,4 +279,35 @@ program
     printReportList(results);
   });
 
+// ── eval dashboard ────────────────────────────────────────────────────────────
+
+program
+  .command("dashboard")
+  .description("Spin up a local web dashboard to visualize eval results")
+  .option("-p, --port <port>", "Port to listen on (default: 3000)", "3000")
+  .option("-d, --results-dir <dir>", "Results directory (default: ./results)", "./results")
+  .option("-c, --config <path>", "Path to .evalrc.json config file")
+  .action(async (opts: { port: string; resultsDir: string; config?: string }) => {
+    const config = loadConfig(opts.config);
+    const resultsDir = path.resolve(opts.resultsDir ?? config.results_dir ?? "./results");
+    const port = parseInt(opts.port, 10);
+
+    const { startServer } = await import("./dashboard/server.js");
+    // open is ESM-only in recent versions — dynamic import handles both
+    const openModule = await import("open");
+    const open = openModule.default;
+
+    try {
+      await startServer({ port, resultsDir });
+      const url = `http://localhost:${port}`;
+      console.log(`\nDashboard running at ${url}`);
+      console.log(`Results directory: ${resultsDir}`);
+      console.log("\nPress Ctrl+C to stop.\n");
+      await open(url);
+    } catch (err) {
+      console.error(`\nFailed to start dashboard: ${(err as Error).message}`);
+      process.exitCode = 1;
+    }
+  });
+
 program.parse(process.argv);
