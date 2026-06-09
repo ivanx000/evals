@@ -15,7 +15,8 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "test": "vitest run --reporter=verbose",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "dashboard:dev": "concurrently -n server,ui -c blue,green \"ts-node src/dashboard/start-dev.ts\" \"cd dashboard-ui && npm run dev\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.56.0",
