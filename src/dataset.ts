@@ -113,12 +113,10 @@ export async function expandDataset(
     for (let tplIdx = 0; tplIdx < templates.length; tplIdx++) {
       const tpl = templates[tplIdx];
       const expanded_case = substituteTemplate(tpl, row);
-      // Auto-assign an id if not present, incorporating the row index
-      if (!expanded_case.id) {
-        expanded_case.id = tpl.id
-          ? `${tpl.id}-row${rowIdx + 1}`
-          : `dataset-row${rowIdx + 1}${templates.length > 1 ? `-tpl${tplIdx + 1}` : ""}`;
-      }
+      // Always assign an id that incorporates the row index for traceability
+      expanded_case.id = tpl.id
+        ? `${tpl.id}-row${rowIdx + 1}`
+        : `dataset-row${rowIdx + 1}${templates.length > 1 ? `-tpl${tplIdx + 1}` : ""}`;
       expanded.push(expanded_case);
     }
   }
