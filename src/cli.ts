@@ -23,7 +23,9 @@ import {
   printCompareResult,
   printReportList,
   printCaseProgress,
+  printDiffResult,
 } from "./reporter.js";
+import { computeDiff } from "./diff.js";
 import type { EvalSuite, EvalConfig, RunResult } from "./types.js";
 
 const program = new Command();
@@ -75,6 +77,7 @@ program
   .option("--json <path>", "Also save raw JSON result to a specific path")
   .option("-o, --output <path>", "Override the results save path (default: ./results/<timestamp>.json)")
   .option("--filter <substring>", "Run only cases whose ID or tag matches the substring")
+  .option("--dataset <path>", "Override the dataset path specified in the suite YAML")
   .option("--timeout <ms>", "Per-case timeout in milliseconds (default: 30000)", "30000")
   .option("--concurrency <n>", "Run N cases in parallel (default: 1)", "1")
   .option("--dry-run", "Validate YAML and print what would run, without calling any API")
@@ -87,6 +90,7 @@ program
     json?: string;
     output?: string;
     filter?: string;
+    dataset?: string;
     timeout: string;
     concurrency: string;
     dryRun?: boolean;
@@ -110,17 +114,22 @@ program
               })
             : suite.cases;
 
+          const datasetPath = opts.dataset ?? suite.dataset;
           console.log(`\nDry run — no API calls will be made`);
           console.log(`Suite:    ${suite.name}`);
           console.log(`Provider: ${provider}`);
           console.log(`Model:    ${model}`);
-          if (opts.filter) console.log(`Filter:   "${opts.filter}" (${cases.length}/${suite.cases.length} cases match)`);
-          console.log(`\nCases (${cases.length}):`);
+          if (datasetPath) console.log(`Dataset:  ${datasetPath}${suite.dataset_limit ? ` (limit: ${suite.dataset_limit})` : ""}${suite.dataset_sample ? ` (sample: ${suite.dataset_sample})` : ""}`);
+          if (opts.filter) console.log(`Filter:   "${opts.filter}" (${cases.length}/${suite.cases.length} template(s) match)`);
+          console.log(`\nCase templates (${cases.length}):`);
           cases.forEach((c, i) => {
             const id = c.id ?? `case-${i + 1}`;
             const criteria = c.criteria.map((cr) => cr.type).join(", ");
+            const promptDisplay = c.turns
+              ? `[multi-turn: ${c.turns.length} turns]`
+              : (c.prompt ?? "").slice(0, 70) + ((c.prompt ?? "").length > 70 ? "…" : "");
             console.log(`  [${i + 1}] ${id}`);
-            console.log(`       Prompt:   ${c.prompt.slice(0, 70)}${c.prompt.length > 70 ? "…" : ""}`);
+            console.log(`       Prompt:   ${promptDisplay}`);
             console.log(`       Criteria: ${criteria}`);
           });
           return;
@@ -128,7 +137,9 @@ program
 
         checkApiKeys(suite, config);
 
-        console.log(`\nRunning suite: ${suite.name} (${suite.cases.length} cases)`);
+        const datasetLabel = opts.dataset ?? suite.dataset;
+        const caseCountLabel = datasetLabel ? `templates → dataset: ${datasetLabel}` : `${suite.cases.length} cases`;
+        console.log(`\nRunning suite: ${suite.name} (${caseCountLabel})`);
 
         const result = await runSuite(suite, config, {
           model: opts.model,
@@ -137,6 +148,7 @@ program
           timeout: parseInt(opts.timeout, 10),
           concurrency: parseInt(opts.concurrency, 10),
           filter: opts.filter,
+          datasetOverride: opts.dataset,
           onCaseResult: printCaseProgress,
         });
 
@@ -306,6 +318,31 @@ program
       await open(url);
     } catch (err) {
       console.error(`\nFailed to start dashboard: ${(err as Error).message}`);
+      process.exitCode = 1;
+    }
+  });
+
+// ── eval diff ─────────────────────────────────────────────────────────────────
+
+program
+  .command("diff <baseline> <candidate>")
+  .description("Compare two result files and report regressions and improvements")
+  .option("--format <fmt>", "Output format: table (default) or json", "table")
+  .action((baselinePath: string, candidatePath: string, opts: { format: string }) => {
+    try {
+      const baseline = loadResult(path.resolve(baselinePath));
+      const candidate = loadResult(path.resolve(candidatePath));
+      const diff = computeDiff(baseline, candidate);
+
+      if (opts.format === "json") {
+        console.log(JSON.stringify(diff, null, 2));
+      } else {
+        printDiffResult(diff);
+      }
+
+      if (diff.regressions.length > 0) process.exitCode = 1;
+    } catch (err) {
+      console.error(`\nError: ${(err as Error).message}`);
       process.exitCode = 1;
     }
   });

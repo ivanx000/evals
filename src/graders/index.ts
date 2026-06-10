@@ -1,9 +1,20 @@
-import type { Criteria, GraderResult } from "../types.js";
+import type { Criteria, GraderResult, PluginGrader } from "../types.js";
 import { gradeExactMatch } from "./exact_match.js";
 import { gradeContains } from "./contains.js";
 import { gradeMaxWords } from "./max_words.js";
 import { gradeRegex } from "./regex.js";
 import { gradeLLMJudge } from "./llm_judge.js";
+import { loadPlugins } from "../plugins.js";
+
+// Plugins are loaded once per process and cached here
+let pluginCache: Map<string, PluginGrader> | null = null;
+
+async function getPlugins(): Promise<Map<string, PluginGrader>> {
+  if (pluginCache === null) {
+    pluginCache = await loadPlugins();
+  }
+  return pluginCache;
+}
 
 export async function runGraders(
   output: string,
@@ -12,6 +23,7 @@ export async function runGraders(
   judgeApiKey?: string
 ): Promise<GraderResult[]> {
   const results: GraderResult[] = [];
+  const plugins = await getPlugins();
 
   for (const criteria of criteriaList) {
     try {
@@ -31,6 +43,28 @@ export async function runGraders(
         case "llm_judge":
           results.push(await gradeLLMJudge(output, criteria, judgeModel, judgeApiKey));
           break;
+        default: {
+          // Try plugin graders
+          const plugin = plugins.get((criteria as { type: string }).type);
+          if (plugin) {
+            try {
+              const result = await plugin.run(output, criteria);
+              results.push(result);
+            } catch (pluginErr) {
+              results.push({
+                criteria_type: (criteria as { type: string }).type,
+                passed: false,
+                error: `Plugin grader "${(criteria as { type: string }).type}" failed: ${(pluginErr as Error).message}`,
+              });
+            }
+          } else {
+            results.push({
+              criteria_type: (criteria as { type: string }).type,
+              passed: false,
+              error: `Unknown grader type: "${(criteria as { type: string }).type}"`,
+            });
+          }
+        }
       }
     } catch (err) {
       results.push({
@@ -42,6 +76,11 @@ export async function runGraders(
   }
 
   return results;
+}
+
+// Exported for tests: reset the plugin cache (e.g. between test suites)
+export function resetPluginCache(): void {
+  pluginCache = null;
 }
 
 export { gradeExactMatch } from "./exact_match.js";

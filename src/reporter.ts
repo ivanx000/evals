@@ -1,5 +1,5 @@
 import Table from "cli-table3";
-import type { RunResult, CaseResult } from "./types.js";
+import type { RunResult, CaseResult, DiffResult } from "./types.js";
 
 const GREEN = "\x1b[32m";
 const RED = "\x1b[31m";
@@ -236,6 +236,69 @@ export function printReportList(results: RunResult[]): void {
   });
 
   console.log(table.toString());
+  console.log("");
+}
+
+export function printDiffResult(diff: DiffResult): void {
+  console.log("");
+  console.log(`${BOLD}${CYAN}Regression Diff${RESET}`);
+  console.log(`${DIM}Baseline:  ${diff.baseline_run_id}${RESET}`);
+  console.log(`${DIM}Candidate: ${diff.candidate_run_id}${RESET}`);
+  console.log("");
+
+  if (diff.regressions.length > 0) {
+    console.log(`${RED}${BOLD}❌ Regressions (${diff.regressions.length})${RESET}`);
+    const table = new Table({
+      head: [`${BOLD}Case${RESET}`, `${BOLD}Grader${RESET}`, `${BOLD}Baseline${RESET}`, `${BOLD}Candidate${RESET}`],
+      style: { head: [], border: ["dim"] },
+    });
+    for (const r of diff.regressions) {
+      table.push([
+        truncate(r.case_id, 30),
+        r.criteria_type,
+        `${GREEN}PASS${RESET}`,
+        `${RED}FAIL${RESET}`,
+      ]);
+    }
+    console.log(table.toString());
+  }
+
+  if (diff.improvements.length > 0) {
+    console.log(`${GREEN}${BOLD}✅ Improvements (${diff.improvements.length})${RESET}`);
+    const table = new Table({
+      head: [`${BOLD}Case${RESET}`, `${BOLD}Grader${RESET}`, `${BOLD}Baseline${RESET}`, `${BOLD}Candidate${RESET}`],
+      style: { head: [], border: ["dim"] },
+    });
+    for (const r of diff.improvements) {
+      table.push([
+        truncate(r.case_id, 30),
+        r.criteria_type,
+        `${RED}FAIL${RESET}`,
+        `${GREEN}PASS${RESET}`,
+      ]);
+    }
+    console.log(table.toString());
+  }
+
+  if (diff.removed_cases.length > 0) {
+    console.log(`${YELLOW}Removed cases (${diff.removed_cases.length}): ${diff.removed_cases.join(", ")}${RESET}`);
+  }
+  if (diff.added_cases.length > 0) {
+    console.log(`${CYAN}Added cases (${diff.added_cases.length}): ${diff.added_cases.join(", ")}${RESET}`);
+  }
+
+  console.log("");
+  console.log(
+    `${DIM}Unchanged: ${diff.unchanged_count}${RESET}` +
+    `  ❌ Regressions: ${diff.regressions.length > 0 ? `${RED}${diff.regressions.length}${RESET}` : "0"}` +
+    `  ✅ Improvements: ${diff.improvements.length > 0 ? `${GREEN}${diff.improvements.length}${RESET}` : "0"}`
+  );
+
+  if (diff.regressions.length > 0) {
+    console.log(`\n${RED}${BOLD}${diff.regressions.length} regression(s) found vs baseline.${RESET}`);
+  } else {
+    console.log(`\n${GREEN}No regressions vs baseline.${RESET}`);
+  }
   console.log("");
 }
 
