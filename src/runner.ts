@@ -9,12 +9,14 @@ import type {
   RunResult,
   EvalConfig,
   ProviderCallOptions,
+  Message,
 } from "./types.js";
 import { EvalSuiteSchema } from "./types.js";
 import { AnthropicProvider } from "./providers/anthropic.js";
 import { OpenAIProvider } from "./providers/openai.js";
 import { runGraders } from "./graders/index.js";
 import { cacheGet, cacheSet } from "./cache.js";
+import { expandDataset } from "./dataset.js";
 
 export interface RunOptions {
   model?: string;
@@ -24,6 +26,7 @@ export interface RunOptions {
   timeout?: number;
   concurrency?: number;
   filter?: string;
+  datasetOverride?: string;
   onCaseResult?: (result: CaseResult, index: number, total: number) => void;
 }
 
@@ -98,6 +101,59 @@ class Semaphore {
   }
 }
 
+// ─── Multi-turn conversation builder ─────────────────────────────────────────
+
+async function buildMultiTurnMessages(
+  evalCase: EvalCase,
+  suite: EvalSuite,
+  model: string,
+  provider: string,
+  config: EvalConfig
+): Promise<{ messages: Message[]; totalInputTokens: number; totalOutputTokens: number; totalCost: number }> {
+  const turns = evalCase.turns!;
+
+  // Find the index of the last null assistant turn (the one being evaluated)
+  let lastNullIdx = -1;
+  for (let i = turns.length - 1; i >= 0; i--) {
+    if (turns[i].role === "assistant" && turns[i].content === null) {
+      lastNullIdx = i;
+      break;
+    }
+  }
+  if (lastNullIdx === -1) {
+    throw new Error("Multi-turn case has no null assistant turn to evaluate");
+  }
+
+  const messages: Message[] = [];
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalCost = 0;
+
+  // Process all turns before the last null assistant turn
+  for (let i = 0; i < lastNullIdx; i++) {
+    const turn = turns[i];
+    if (turn.content !== null) {
+      messages.push({ role: turn.role, content: turn.content });
+    } else {
+      // Intermediate null assistant turn — call the model to fill it in
+      const llm = makeProvider(provider, config);
+      const response = await llm.call({
+        model,
+        messages: [...messages],
+        system_prompt: suite.system_prompt,
+        temperature: suite.temperature,
+        max_tokens: suite.max_tokens ?? 1024,
+      });
+      messages.push({ role: "assistant", content: response.output });
+      totalInputTokens += response.input_tokens ?? 0;
+      totalOutputTokens += response.output_tokens ?? 0;
+      totalCost += response.cost_usd ?? 0;
+    }
+  }
+
+  return { messages, totalInputTokens, totalOutputTokens, totalCost };
+}
+
 // ─── Case execution ───────────────────────────────────────────────────────────
 
 async function runCase(
@@ -109,14 +165,7 @@ async function runCase(
   options: RunOptions
 ): Promise<CaseResult> {
   const caseId = evalCase.id ?? `case-${randomUUID().slice(0, 8)}`;
-
-  const callOptions: ProviderCallOptions = {
-    model,
-    prompt: evalCase.prompt,
-    system_prompt: suite.system_prompt,
-    temperature: suite.temperature,
-    max_tokens: suite.max_tokens ?? 1024,
-  };
+  const isMultiTurn = Array.isArray(evalCase.turns) && evalCase.turns.length > 0;
 
   let output = "";
   let input_tokens: number | undefined;
@@ -124,32 +173,62 @@ async function runCase(
   let cost_usd: number | undefined;
   let cached = false;
   let error: string | undefined;
+  const promptLabel = isMultiTurn ? `[multi-turn: ${evalCase.turns!.length} turns]` : (evalCase.prompt ?? "");
 
   const start = Date.now();
 
   try {
-    const cacheEnabled = config.cache_enabled && !options.noCache;
-    if (cacheEnabled) {
-      const hit = cacheGet(callOptions);
-      if (hit) {
-        output = hit.output;
-        input_tokens = hit.input_tokens;
-        output_tokens = hit.output_tokens;
-        cost_usd = hit.cost_usd;
-        cached = true;
-      }
-    }
+    if (isMultiTurn) {
+      // Multi-turn: build conversation history, then run final turn
+      const { messages, totalInputTokens, totalOutputTokens, totalCost } =
+        await buildMultiTurnMessages(evalCase, suite, model, provider, config);
 
-    if (!cached) {
+      const callOptions: ProviderCallOptions = {
+        model,
+        messages,
+        system_prompt: suite.system_prompt,
+        temperature: suite.temperature,
+        max_tokens: suite.max_tokens ?? 1024,
+      };
+
       const llm = makeProvider(provider, config);
       const response = await llm.call(callOptions);
       output = response.output;
-      input_tokens = response.input_tokens;
-      output_tokens = response.output_tokens;
-      cost_usd = response.cost_usd;
+      input_tokens = (response.input_tokens ?? 0) + totalInputTokens;
+      output_tokens = (response.output_tokens ?? 0) + totalOutputTokens;
+      cost_usd = (response.cost_usd ?? 0) + totalCost;
+    } else {
+      const callOptions: ProviderCallOptions = {
+        model,
+        prompt: evalCase.prompt,
+        system_prompt: suite.system_prompt,
+        temperature: suite.temperature,
+        max_tokens: suite.max_tokens ?? 1024,
+      };
 
+      const cacheEnabled = config.cache_enabled && !options.noCache;
       if (cacheEnabled) {
-        cacheSet(callOptions, response);
+        const hit = cacheGet(callOptions);
+        if (hit) {
+          output = hit.output;
+          input_tokens = hit.input_tokens;
+          output_tokens = hit.output_tokens;
+          cost_usd = hit.cost_usd;
+          cached = true;
+        }
+      }
+
+      if (!cached) {
+        const llm = makeProvider(provider, config);
+        const response = await llm.call(callOptions);
+        output = response.output;
+        input_tokens = response.input_tokens;
+        output_tokens = response.output_tokens;
+        cost_usd = response.cost_usd;
+
+        if (cacheEnabled) {
+          cacheSet(callOptions, response);
+        }
       }
     }
   } catch (err) {
@@ -166,7 +245,7 @@ async function runCase(
 
   return {
     case_id: caseId,
-    prompt: evalCase.prompt,
+    prompt: promptLabel,
     model,
     provider,
     output,
@@ -191,10 +270,12 @@ async function runCaseWithTimeout(
 ): Promise<CaseResult> {
   const timeoutMs = options.timeout ?? 30_000;
   const caseId = evalCase.id ?? `case-${randomUUID().slice(0, 8)}`;
+  const isMultiTurn = Array.isArray(evalCase.turns) && evalCase.turns.length > 0;
+  const promptLabel = isMultiTurn ? `[multi-turn: ${evalCase.turns!.length} turns]` : (evalCase.prompt ?? "");
 
   const timeoutResult: CaseResult = {
     case_id: caseId,
-    prompt: evalCase.prompt,
+    prompt: promptLabel,
     model,
     provider,
     output: "",
@@ -230,14 +311,30 @@ export async function runSuite(
     options.model ?? suite.model ?? config.default_model ?? "claude-opus-4-8";
   const provider = suite.provider ?? config.default_provider ?? "anthropic";
 
+  // Resolve dataset: CLI override takes precedence over YAML field
+  const datasetPath = options.datasetOverride ?? suite.dataset;
+
+  let resolvedCases = suite.cases;
+  if (datasetPath) {
+    const absPath = path.isAbsolute(datasetPath)
+      ? datasetPath
+      : path.join(process.cwd(), datasetPath);
+    resolvedCases = await expandDataset(
+      suite.cases,
+      absPath,
+      suite.dataset_limit,
+      suite.dataset_sample
+    );
+  }
+
   const filteredCases = options.filter
-    ? suite.cases.filter((c) => {
+    ? resolvedCases.filter((c) => {
         const filterLower = options.filter!.toLowerCase();
         const matchesId = c.id?.toLowerCase().includes(filterLower) ?? false;
         const matchesTags = c.tags?.some((t) => t.toLowerCase().includes(filterLower)) ?? false;
         return matchesId || matchesTags;
       })
-    : suite.cases;
+    : resolvedCases;
 
   const runId = randomUUID();
   const timestamp = new Date().toISOString();

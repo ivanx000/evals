@@ -29,7 +29,13 @@ export class OpenAIProvider implements LLMProvider {
     if (options.system_prompt) {
       messages.push({ role: "system", content: options.system_prompt });
     }
-    messages.push({ role: "user", content: options.prompt });
+    if (options.messages) {
+      for (const m of options.messages) {
+        messages.push({ role: m.role, content: m.content });
+      }
+    } else {
+      messages.push({ role: "user", content: options.prompt ?? "" });
+    }
 
     let response: OpenAI.Chat.ChatCompletion;
     try {

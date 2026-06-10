@@ -97,6 +97,7 @@ export type RegexCriteria = z.infer<typeof RegexCriteriaSchema>;
 export type LLMJudgeCriteria = z.infer<typeof LLMJudgeCriteriaSchema>;
 export type Criteria = z.infer<typeof CriteriaSchema>;
 
+export type Turn = z.infer<typeof TurnSchema>;
 export type EvalCase = z.infer<typeof EvalCaseSchema>;
 export type EvalSuite = z.infer<typeof EvalSuiteSchema>;
 export type EvalConfig = z.infer<typeof EvalConfigSchema>;
@@ -147,9 +148,15 @@ export interface RunResult {
 
 // ─── Provider interface ────────────────────────────────────────────────────────
 
+export interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface ProviderCallOptions {
   model: string;
-  prompt: string;
+  prompt?: string;
+  messages?: Message[];
   system_prompt?: string;
   temperature?: number;
   max_tokens: number;
@@ -183,6 +190,36 @@ export const OPENAI_PRICING: Record<string, { input: number; output: number }> =
   "gpt-4-turbo":     { input: 10.00, output: 30.00 },
   "gpt-3.5-turbo":   { input: 0.50,  output: 1.50  },
 };
+
+// ─── Plugin grader interface ───────────────────────────────────────────────────
+
+export interface PluginGrader {
+  type: string;
+  validate: (config: unknown) => import("zod").ZodSchema;
+  run: (output: string, config: unknown) => Promise<GraderResult>;
+}
+
+// ─── Regression diff types ─────────────────────────────────────────────────────
+
+export type DiffStatus = "regression" | "improvement" | "unchanged" | "added" | "removed";
+
+export interface DiffEntry {
+  case_id: string;
+  criteria_type: string;
+  baseline_passed: boolean | null;
+  candidate_passed: boolean | null;
+  status: DiffStatus;
+}
+
+export interface DiffResult {
+  baseline_run_id: string;
+  candidate_run_id: string;
+  regressions: DiffEntry[];
+  improvements: DiffEntry[];
+  removed_cases: string[];
+  added_cases: string[];
+  unchanged_count: number;
+}
 
 export function estimateCost(
   model: string,

@@ -25,9 +25,9 @@ export class AnthropicProvider implements LLMProvider {
       );
     }
 
-    const messages: Anthropic.MessageParam[] = [
-      { role: "user", content: options.prompt },
-    ];
+    const messages: Anthropic.MessageParam[] = options.messages
+      ? options.messages.map((m) => ({ role: m.role, content: m.content }))
+      : [{ role: "user", content: options.prompt ?? "" }];
 
     let response: Anthropic.Message;
     try {
