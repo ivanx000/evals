@@ -35,6 +35,7 @@ export async function loadDatasetRows(
 
     const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
     let lineNum = 0;
+    let earlyError: Error | null = null;
 
     rl.on("line", (line) => {
       lineNum++;
@@ -45,16 +46,16 @@ export async function loadDatasetRows(
       try {
         parsed = JSON.parse(trimmed);
       } catch {
+        earlyError = new Error(`Invalid JSON on line ${lineNum} of ${filePath}`);
         rl.close();
         stream.destroy();
-        reject(new Error(`Invalid JSON on line ${lineNum} of ${filePath}`));
         return;
       }
 
       if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        earlyError = new Error(`Line ${lineNum} of ${filePath} is not a JSON object`);
         rl.close();
         stream.destroy();
-        reject(new Error(`Line ${lineNum} of ${filePath} is not a JSON object`));
         return;
       }
 
@@ -67,7 +68,10 @@ export async function loadDatasetRows(
       }
     });
 
-    rl.on("close", resolve);
+    rl.on("close", () => {
+      if (earlyError) reject(earlyError);
+      else resolve();
+    });
     rl.on("error", reject);
   });
 
