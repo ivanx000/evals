@@ -112,9 +112,107 @@ The judge always uses the Anthropic provider, regardless of the suite's `provide
 | 4 | Mostly meets the rubric with minor issues |
 | 5 | Fully meets the rubric |
 
-### Adding a new grader
+### Adding a built-in grader (core contributors)
 
 1. Create `src/graders/<name>.ts` exporting a `grade<Name>(output, criteria): GraderResult` function
 2. Add the Zod schema to `src/types.ts` and include it in the `CriteriaSchema` discriminated union
 3. Register the grader in `src/graders/index.ts` `runGraders()` switch statement
 4. Update this file with the new grader's documentation
+
+---
+
+## Writing a Custom Grader Plugin
+
+Drop a `.js` file into a `graders/` folder next to your suite YAML and the framework picks it up automatically — no changes to the core codebase needed.
+
+### Plugin interface
+
+```js
+// graders/my_grader.js
+export default {
+  type: "my_grader",    // unique type name (must not conflict with built-ins)
+
+  run: async (output, config) => {
+    // output: string — the model's response
+    // config: object — the raw criteria object from YAML (e.g. { type: "my_grader", threshold: 0.8 })
+    return {
+      criteria_type: "my_grader",
+      passed: true,           // or false
+      detail: "optional human-readable explanation",
+    };
+  },
+};
+```
+
+The `run` function receives `output` (the model response as a string) and `config` (the raw criteria object from YAML including any custom fields you define). It must return a `GraderResult`-compatible object.
+
+### Step-by-step example: sentiment grader
+
+**1. Create `graders/sentiment_grader.js`:**
+
+```js
+const POSITIVE = ["good", "great", "excellent", "love", "happy", "amazing"];
+const NEGATIVE = ["bad", "terrible", "awful", "hate", "worst", "broken"];
+
+function detectSentiment(text) {
+  const words = text.toLowerCase().match(/\b\w+\b/g) ?? [];
+  let pos = 0, neg = 0;
+  for (const w of words) {
+    if (POSITIVE.includes(w)) pos++;
+    if (NEGATIVE.includes(w)) neg++;
+  }
+  if (pos > neg) return "positive";
+  if (neg > pos) return "negative";
+  return "neutral";
+}
+
+export default {
+  type: "sentiment",
+  run: async (output, config) => {
+    const detected = detectSentiment(output);
+    return {
+      criteria_type: "sentiment",
+      passed: detected === config.expected,
+      detail: `Detected: ${detected} (expected: ${config.expected})`,
+    };
+  },
+};
+```
+
+**2. Use it in your suite YAML:**
+
+```yaml
+name: Sentiment Test
+cases:
+  - prompt: "Write a positive review of this product."
+    criteria:
+      - type: sentiment
+        expected: positive
+```
+
+**3. Run as normal:**
+
+```bash
+eval run suite.yaml
+```
+
+A working example is included at `examples/plugins/sentiment_grader.js`.
+
+### Discovery rules
+
+- The framework scans `graders/` in the current working directory at startup
+- Only `.js` and `.mjs` files are loaded; `.ts` files require a pre-compilation step
+- Each file must export a default object with at least `{ type, run }`
+- Plugin type names must not conflict with built-in grader names (`exact_match`, `contains`, `max_words`, `regex`, `llm_judge`)
+- Duplicate type names: the first plugin loaded wins (alphabetical file order); a warning is printed for subsequent duplicates
+
+### Error handling
+
+| Scenario | Behavior |
+|---|---|
+| Plugin file fails to load | Warning printed, plugin skipped — eval continues |
+| Plugin exports invalid shape | Warning printed, plugin skipped |
+| Plugin `type` conflicts with built-in | Error thrown at startup — fix the type name |
+| Plugin `run()` throws at evaluation time | `GraderResult` with `passed: false` and the error message |
+
+Plugins never crash the runner — errors are isolated to the grader result for that case.

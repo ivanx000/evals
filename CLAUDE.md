@@ -11,7 +11,9 @@ Key directories:
 - `src/dashboard/` — Express server + REST API for the web dashboard
 - `dashboard-ui/` — standalone Vite + React + TypeScript app (served by Express in prod)
 - `docs/` — reference documentation kept in sync with the code
-- `examples/` — example suite YAML files
+- `examples/` — example suite YAML files, datasets, and plugins
+- `examples/datasets/` — `.jsonl` dataset files for dataset-backed evals
+- `examples/plugins/` — example custom grader plugins (`.js`)
 - `results/` — auto-saved JSON run results (gitignored)
 - `.eval-cache/` — semantic cache for API calls (gitignored)
 - `.claude/` — Claude Code hooks and logs (hooks committed, logs gitignored)
@@ -119,11 +121,35 @@ REST API endpoints served by Express:
 - `GET /api/runs` — list all runs as summaries
 - `GET /api/runs/:id` — full run result JSON
 - `GET /api/compare?runIds=id1,id2` — merged case comparison
+- `GET /api/diff?baseline=id1&candidate=id2` — regression diff between two runs
 
 In development, Vite proxies `/api/*` to Express (`vite.config.ts`).
 In production, Express serves `dashboard-ui/dist/` as static files.
 
 See `docs/dashboard.md` for full reference.
+
+## Phase 3 features (deeper eval capabilities)
+
+- **Dataset support.** `src/dataset.ts` streams `.jsonl` files line-by-line using Node.js `readline`
+  (never loads the whole file into memory). `{{variable}}` substitution works via JSON stringify/replace/parse.
+  `EvalSuiteSchema` has optional `dataset`, `dataset_limit`, `dataset_sample` fields.
+  `--dataset <path>` CLI flag overrides the YAML value at runtime.
+
+- **Multi-turn evals.** Cases can use `turns: [{role, content}]` instead of `prompt`.
+  `content: null` means the model fills in that turn. Intermediate null turns are filled by calling
+  the provider; the last null turn is evaluated by graders. `ProviderCallOptions` now accepts either
+  `prompt` (string) or `messages` (array) — both providers handle both.
+
+- **Regression detection.** `src/diff.ts` + `eval diff <baseline> <candidate>` command.
+  Matches cases by `case_id`, compares per-grader results, detects regressions (pass→fail) and
+  improvements (fail→pass). `--format json` for CI pipelines. Exit code 1 on any regression.
+  The Compare page in the dashboard has a Regressions tab using `GET /api/diff`.
+
+- **Custom grader plugins.** `src/plugins.ts` scans `graders/` in CWD at startup, dynamically imports
+  `.js`/`.mjs` files, validates the `{ type, run }` shape, checks for built-in conflicts.
+  Plugins are cached per process via `pluginCache` in `src/graders/index.ts`. Call
+  `resetPluginCache()` in tests that need a fresh plugin state. Plugin errors are isolated —
+  they return `{ passed: false, error: "..." }` and never crash the runner.
 
 ## Key design decisions (hardening phase)
 
@@ -173,3 +199,9 @@ See `docs/dashboard.md` for full reference.
 ### Adding a CLI command
 1. Add `.command()` to `src/cli.ts`
 2. Update `docs/getting-started.md`
+
+### Adding a custom grader plugin (user-land)
+1. Create `graders/<name>.js` in the project root
+2. Export `{ type, run }` as the default export
+3. Use the grader type in YAML criteria — no other changes needed
+4. See `docs/graders.md` and `examples/plugins/sentiment_grader.js` for the full interface
