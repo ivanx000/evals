@@ -42,13 +42,24 @@ export const CriteriaSchema = z.discriminatedUnion("type", [
 
 // ─── Eval suite schema ─────────────────────────────────────────────────────────
 
+// ─── Multi-turn schema ─────────────────────────────────────────────────────────
+
+export const TurnSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().nullable(),
+});
+
 export const EvalCaseSchema = z.object({
   id: z.string().optional(),
-  prompt: z.string(),
+  prompt: z.string().optional(),
+  turns: z.array(TurnSchema).min(2).optional(),
   expected: z.string().optional(),
   criteria: z.array(CriteriaSchema).min(1),
   tags: z.array(z.string()).optional().default([]),
-});
+}).refine(
+  (d) => d.prompt !== undefined || d.turns !== undefined,
+  { message: "Each case must have either 'prompt' or 'turns'" }
+);
 
 export const EvalSuiteSchema = z.object({
   name: z.string(),
@@ -59,6 +70,10 @@ export const EvalSuiteSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   max_tokens: z.number().int().positive().optional().default(1024),
   cases: z.array(EvalCaseSchema).min(1),
+  // ── Dataset fields ──────────────────────────────────────────────────────────
+  dataset: z.string().optional(),
+  dataset_limit: z.number().int().positive().optional(),
+  dataset_sample: z.number().int().positive().optional(),
 });
 
 // ─── Config schema ─────────────────────────────────────────────────────────────
