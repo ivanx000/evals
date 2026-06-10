@@ -67,3 +67,24 @@ export interface CompareRow {
   caseName: string;
   results: CompareCell[];
 }
+
+// Shape returned by GET /api/diff
+export type DiffStatus = "regression" | "improvement" | "unchanged" | "added" | "removed";
+
+export interface DiffEntry {
+  case_id: string;
+  criteria_type: string;
+  baseline_passed: boolean | null;
+  candidate_passed: boolean | null;
+  status: DiffStatus;
+}
+
+export interface DiffResult {
+  baseline_run_id: string;
+  candidate_run_id: string;
+  regressions: DiffEntry[];
+  improvements: DiffEntry[];
+  removed_cases: string[];
+  added_cases: string[];
+  unchanged_count: number;
+}

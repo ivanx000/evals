@@ -1,0 +1,49 @@
+name: Multi-Turn Memory Test
+description: Verifies that the model retains context across a conversation
+provider: anthropic
+model: claude-haiku-4-5
+max_tokens: 256
+
+cases:
+  - id: remember-name
+    turns:
+      - role: user
+        content: "My name is Ivan. Please remember it."
+      - role: assistant
+        content: null
+      - role: user
+        content: "What is my name?"
+      - role: assistant
+        content: null
+    criteria:
+      - type: contains
+        value: "Ivan"
+        case_sensitive: true
+
+  - id: remember-number
+    turns:
+      - role: user
+        content: "My lucky number is 42."
+      - role: assistant
+        content: null
+      - role: user
+        content: "What was my lucky number again?"
+      - role: assistant
+        content: null
+    criteria:
+      - type: contains
+        value: "42"
+
+  - id: follow-instructions
+    turns:
+      - role: user
+        content: "For the rest of this conversation, always respond in exactly 3 words."
+      - role: assistant
+        content: "Understood, three words."
+      - role: user
+        content: "What is the capital of France?"
+      - role: assistant
+        content: null
+    criteria:
+      - type: max_words
+        value: 5

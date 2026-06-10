@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import type { Request, Response } from "express";
 import type { RunResult } from "../types.js";
+import { computeDiff } from "../diff.js";
 
 interface RunSummary {
   id: string;
@@ -119,6 +120,31 @@ export function makeApiHandlers(resultsDir: string) {
         }));
 
         res.json(result);
+      } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+      }
+    },
+
+    diffRuns(req: Request, res: Response): void {
+      try {
+        const baseline = String(req.query.baseline ?? "").trim();
+        const candidate = String(req.query.candidate ?? "").trim();
+        if (!baseline || !candidate) {
+          res.status(400).json({ error: "Provide baseline and candidate run IDs" });
+          return;
+        }
+        const allRuns = loadAllRuns(resultsDir);
+        const baselineRun = allRuns.find((r) => r.run_id === baseline);
+        const candidateRun = allRuns.find((r) => r.run_id === candidate);
+        if (!baselineRun) {
+          res.status(404).json({ error: `Baseline run not found: ${baseline}` });
+          return;
+        }
+        if (!candidateRun) {
+          res.status(404).json({ error: `Candidate run not found: ${candidate}` });
+          return;
+        }
+        res.json(computeDiff(baselineRun, candidateRun));
       } catch (err) {
         res.status(500).json({ error: (err as Error).message });
       }

@@ -7,4 +7,5 @@ export function registerRoutes(app: Express, resultsDir: string): void {
   app.get("/api/runs", (req, res) => handlers.listRuns(req, res));
   app.get("/api/runs/:id", (req, res) => handlers.getRun(req, res));
   app.get("/api/compare", (req, res) => handlers.compareRuns(req, res));
+  app.get("/api/diff", (req, res) => handlers.diffRuns(req, res));
 }

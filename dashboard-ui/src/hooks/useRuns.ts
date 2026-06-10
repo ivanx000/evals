@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { RunSummary, RunResult, CompareRow } from "../types";
+import type { RunSummary, RunResult, CompareRow, DiffResult } from "../types";
 
 async function apiFetch<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -62,4 +62,25 @@ export function useCompare(runIds: string[]) {
   }, [runIds.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { rows, loading, error };
+}
+
+export function useDiff(baselineId: string | null, candidateId: string | null) {
+  const [diff, setDiff] = useState<DiffResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!baselineId || !candidateId) {
+      setDiff(null);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    apiFetch<DiffResult>(`/api/diff?baseline=${baselineId}&candidate=${candidateId}`)
+      .then(setDiff)
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [baselineId, candidateId]);
+
+  return { diff, loading, error };
 }
