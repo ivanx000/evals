@@ -14,12 +14,14 @@ import type {
 import { EvalSuiteSchema } from "./types.js";
 import { AnthropicProvider } from "./providers/anthropic.js";
 import { OpenAIProvider } from "./providers/openai.js";
+import { OllamaProvider } from "./providers/ollama.js";
 import { runGraders } from "./graders/index.js";
 import { cacheGet, cacheSet } from "./cache.js";
 import { expandDataset } from "./dataset.js";
 
 export interface RunOptions {
   model?: string;
+  providerOverride?: string;
   watch?: boolean;
   noCache?: boolean;
   verbose?: boolean;
@@ -69,6 +71,9 @@ export function loadSuite(suitePath: string): EvalSuite {
 function makeProvider(provider: string, config: EvalConfig) {
   if (provider === "openai") {
     return new OpenAIProvider(config.openai_api_key);
+  }
+  if (provider === "ollama") {
+    return new OllamaProvider();
   }
   return new AnthropicProvider(config.anthropic_api_key);
 }
@@ -309,7 +314,7 @@ export async function runSuite(
 ): Promise<RunResult> {
   const model =
     options.model ?? suite.model ?? config.default_model ?? "claude-opus-4-8";
-  const provider = suite.provider ?? config.default_provider ?? "anthropic";
+  const provider = options.providerOverride ?? suite.provider ?? config.default_provider ?? "anthropic";
 
   // Resolve dataset: CLI override takes precedence over YAML field
   const datasetPath = options.datasetOverride ?? suite.dataset;

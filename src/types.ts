@@ -65,7 +65,7 @@ export const EvalSuiteSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   model: z.string().optional(),
-  provider: z.enum(["anthropic", "openai"]).optional().default("anthropic"),
+  provider: z.enum(["anthropic", "openai", "ollama"]).optional().default("anthropic"),
   system_prompt: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),
   max_tokens: z.number().int().positive().optional().default(1024),
@@ -80,7 +80,7 @@ export const EvalSuiteSchema = z.object({
 
 export const EvalConfigSchema = z.object({
   default_model: z.string().optional(),
-  default_provider: z.enum(["anthropic", "openai"]).optional(),
+  default_provider: z.enum(["anthropic", "openai", "ollama"]).optional(),
   anthropic_api_key: z.string().optional(),
   openai_api_key: z.string().optional(),
   judge_model: z.string().optional().default("claude-opus-4-8"),
@@ -227,6 +227,7 @@ export function estimateCost(
   inputTokens: number,
   outputTokens: number
 ): number {
+  if (provider === "ollama") return 0;
   const table = provider === "openai" ? OPENAI_PRICING : ANTHROPIC_PRICING;
   const pricing = table[model];
   if (!pricing) return 0;

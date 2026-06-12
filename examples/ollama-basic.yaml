@@ -1,0 +1,14 @@
+name: "Local model smoke test"
+provider: ollama
+model: llama3
+cases:
+  - name: "Basic reasoning"
+    prompt: "What is 2 + 2? Answer with just the number."
+    criteria:
+      - type: exact_match
+        value: "4"
+  - name: "Short answer"
+    prompt: "What is the capital of France? One word only."
+    criteria:
+      - type: contains
+        value: "Paris"

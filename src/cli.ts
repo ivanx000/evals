@@ -37,8 +37,8 @@ program
 
 // ─── API key guard ────────────────────────────────────────────────────────────
 
-function checkApiKeys(suite: EvalSuite, config: EvalConfig): void {
-  const provider = suite.provider ?? config.default_provider ?? "anthropic";
+function checkApiKeys(suite: EvalSuite, config: EvalConfig, providerOverride?: string): void {
+  const provider = providerOverride ?? suite.provider ?? config.default_provider ?? "anthropic";
 
   if (provider === "anthropic" && !config.anthropic_api_key) {
     console.error("Error: ANTHROPIC_API_KEY is required for the Anthropic provider.");
@@ -54,6 +54,8 @@ function checkApiKeys(suite: EvalSuite, config: EvalConfig): void {
     process.exit(1);
   }
 
+  // ollama: no API key needed — skip
+
   const hasLLMJudge = suite.cases.some((c) =>
     c.criteria.some((cr) => cr.type === "llm_judge")
   );
@@ -63,6 +65,21 @@ function checkApiKeys(suite: EvalSuite, config: EvalConfig): void {
     console.error("  Set it with: export ANTHROPIC_API_KEY=sk-ant-...");
     process.exit(1);
   }
+}
+
+// Parse "provider/model" or bare "model" (defaults to fallbackProvider)
+function parseProviderModel(
+  spec: string,
+  fallbackProvider: string
+): { provider: string; model: string } {
+  const slashIdx = spec.indexOf("/");
+  if (slashIdx !== -1) {
+    return {
+      provider: spec.slice(0, slashIdx),
+      model: spec.slice(slashIdx + 1),
+    };
+  }
+  return { provider: fallbackProvider, model: spec };
 }
 
 // ── eval run ──────────────────────────────────────────────────────────────────
@@ -196,8 +213,8 @@ program
 program
   .command("compare <suite>")
   .description("Run a suite across multiple models and compare results")
-  .requiredOption("--models <models>", "Comma-separated list of model IDs to compare")
-  .option("--provider <provider>", "Provider to use for all models (anthropic|openai)", "anthropic")
+  .requiredOption("--models <models>", "Comma-separated list of model IDs (use provider/model for mixed providers)")
+  .option("--provider <provider>", "Default provider when no provider/ prefix is given (anthropic|openai|ollama)", "anthropic")
   .option("--no-cache", "Disable semantic cache")
   .option("-v, --verbose", "Show full outputs")
   .option("--timeout <ms>", "Per-case timeout in milliseconds (default: 30000)", "30000")
@@ -213,25 +230,34 @@ program
     config?: string;
   }) => {
     const config = loadConfig(opts.config);
-    const models = opts.models.split(",").map((m) => m.trim()).filter(Boolean);
+    const modelSpecs = opts.models.split(",").map((m) => m.trim()).filter(Boolean);
 
-    if (models.length < 2) {
+    if (modelSpecs.length < 2) {
       console.error("Error: --models requires at least 2 comma-separated model IDs");
       process.exitCode = 1;
       return;
     }
 
+    const parsed = modelSpecs.map((spec) => parseProviderModel(spec, opts.provider));
+
     try {
       const suite = loadSuite(path.resolve(suitePath));
-      checkApiKeys(suite, config);
-      console.log(`\nComparing ${models.length} models on suite: ${suite.name}`);
+
+      // Check API keys for each unique provider being used
+      const uniqueProviders = [...new Set(parsed.map((p) => p.provider))];
+      for (const p of uniqueProviders) {
+        checkApiKeys(suite, config, p);
+      }
+
+      console.log(`\nComparing ${parsed.length} models on suite: ${suite.name}`);
 
       const results: RunResult[] = [];
 
-      for (const model of models) {
-        console.log(`\n  Model: ${model}`);
+      for (const { provider, model } of parsed) {
+        console.log(`\n  Model: ${provider}/${model}`);
         const result = await runSuite(suite, config, {
           model,
+          providerOverride: provider,
           noCache: !opts.cache,
           verbose: opts.verbose,
           timeout: parseInt(opts.timeout, 10),
@@ -345,6 +371,66 @@ program
       console.error(`\nError: ${(err as Error).message}`);
       process.exitCode = 1;
     }
+  });
+
+// ── eval providers ────────────────────────────────────────────────────────────
+
+program
+  .command("providers")
+  .description("Show configured providers and their status")
+  .option("-c, --config <path>", "Path to .evalrc.json config file")
+  .action(async (opts: { config?: string }) => {
+    const config = loadConfig(opts.config);
+
+    const Table = (await import("cli-table3")).default;
+    const table = new Table({
+      head: ["Provider", "Status", "Notes"],
+      style: { head: ["cyan"] },
+    });
+
+    // Anthropic
+    const hasAnthropic = !!config.anthropic_api_key;
+    table.push([
+      "anthropic",
+      hasAnthropic ? "✅ ready" : "⚠️  no key",
+      hasAnthropic ? "API key set" : "Set ANTHROPIC_API_KEY",
+    ]);
+
+    // OpenAI
+    const hasOpenAI = !!config.openai_api_key;
+    table.push([
+      "openai",
+      hasOpenAI ? "✅ ready" : "⚠️  no key",
+      hasOpenAI ? "API key set" : "Set OPENAI_API_KEY",
+    ]);
+
+    // Ollama — ping /api/tags
+    const ollamaHost = process.env.OLLAMA_HOST ?? "http://localhost:11434";
+    try {
+      const res = await fetch(`${ollamaHost}/api/tags`);
+      if (res.ok) {
+        const data = await res.json() as { models?: Array<{ name: string }> };
+        const modelCount = data.models?.length ?? 0;
+        const modelList = modelCount > 0
+          ? data.models!.map((m) => m.name).slice(0, 3).join(", ") + (modelCount > 3 ? ", …" : "")
+          : "no models pulled";
+        table.push([
+          "ollama",
+          "✅ running",
+          `${modelCount} model${modelCount !== 1 ? "s" : ""} available: ${modelList}`,
+        ]);
+      } else {
+        table.push(["ollama", "❌ error", `Unexpected response: ${res.status}`]);
+      }
+    } catch {
+      table.push([
+        "ollama",
+        "❌ offline",
+        `Not running at ${ollamaHost} — install: https://ollama.com`,
+      ]);
+    }
+
+    console.log("\n" + table.toString() + "\n");
   });
 
 program.parse(process.argv);
