@@ -32,6 +32,7 @@ eval run examples/summarization.yaml --watch          # re-run on file save
 eval run examples/summarization.yaml --no-cache       # skip semantic cache
 eval run examples/summarization.yaml --verbose        # show full outputs + judge reasoning
 eval run examples/summarization.yaml --json out.json  # also write raw JSON to a path
+eval run examples/summarization.yaml --dataset examples/datasets/prompts.jsonl  # override dataset
 ```
 
 ### `eval compare <suite.yaml> --models <model1,model2,...>`
@@ -45,6 +46,19 @@ eval compare examples/summarization.yaml \
 eval compare examples/summarization.yaml \
   --models gpt-4o-mini,gpt-4o \
   --provider openai
+
+# Mix providers with provider/model syntax
+eval compare examples/summarization.yaml \
+  --models anthropic/claude-haiku-4-5,gemini/gemini-2.0-flash,ollama/llama3
+```
+
+### `eval diff <baseline> <candidate>`
+
+Compare two saved result files and report regressions and improvements. Exits with code 1 if any regressions are found — useful in CI.
+
+```bash
+eval diff results/2024-01-01_suite.json results/2024-01-02_suite.json
+eval diff baseline.json candidate.json --format json
 ```
 
 ### `eval report`
@@ -57,16 +71,41 @@ eval report --last 5
 eval report --suite summarization
 ```
 
+### `eval dashboard`
+
+Spin up a local web dashboard to visualize and compare eval results.
+
+```bash
+eval dashboard
+eval dashboard --port 8080
+eval dashboard --results-dir ./my-results
+```
+
+Opens a browser at `http://localhost:3000`. The dashboard shows run history, per-case breakdowns, and a side-by-side comparison view with a regression tab.
+
+### `eval providers`
+
+Show configured providers and their API key status.
+
+```bash
+eval providers
+```
+
 ## Suite YAML Format
 
 ```yaml
 name: "My Eval Suite"
 description: "Optional description"
-provider: anthropic          # anthropic | openai
+provider: anthropic          # anthropic | openai | gemini | ollama
 model: claude-haiku-4-5      # override per-suite
 system_prompt: "You are..."  # optional system prompt
 temperature: 0.0             # optional, 0-2
 max_tokens: 1024             # default 1024
+
+# Optional: stream cases from a .jsonl dataset file
+dataset: examples/datasets/prompts.jsonl
+dataset_limit: 100           # cap total rows processed
+dataset_sample: 20           # random sample of N rows
 
 cases:
   - id: "unique-case-id"    # optional, auto-generated if omitted
@@ -91,6 +130,52 @@ cases:
         rubric: "The response should be polite and answer the question directly."
         pass_threshold: 3    # 1-5, default 3
         model: claude-opus-4-8  # optional judge model override
+
+      - type: code_execution
+        language: python     # python | javascript | bash
+        test_code: "assert solution(2, 3) == 5"
+        expected_output: ""  # optional: assert stdout matches
+        timeout_ms: 10000    # default 10000
+```
+
+### Multi-turn cases
+
+Use `turns` instead of `prompt` to evaluate multi-step conversations. Set `content: null` on assistant turns the model should fill in — the last null turn is the one evaluated by graders.
+
+```yaml
+cases:
+  - id: remember-name
+    turns:
+      - role: user
+        content: "My name is Ivan. Please remember it."
+      - role: assistant
+        content: null          # model responds here
+      - role: user
+        content: "What is my name?"
+      - role: assistant
+        content: null          # this turn is evaluated
+    criteria:
+      - type: contains
+        value: "Ivan"
+```
+
+### Dataset-backed cases
+
+Point the suite at a `.jsonl` file. Each line is a JSON object whose keys become `{{variable}}` substitutions in `prompt` and `criteria` fields.
+
+```yaml
+dataset: examples/datasets/coding-problems.jsonl
+dataset_limit: 50
+
+cases:
+  - id: "coding-{{id}}"
+    prompt: |
+      Solve the following Python problem. Write only the function.
+      {{problem}}
+    criteria:
+      - type: code_execution
+        language: python
+        test_code: "{{test_code}}"
 ```
 
 ## Graders
@@ -102,8 +187,18 @@ cases:
 | `max_words` | Word count limit | Word count ≤ `value` |
 | `regex` | Regular expression test | Pattern matches output |
 | `llm_judge` | Second LLM scores 1-5 | Score ≥ `pass_threshold` (default 3) |
+| `code_execution` | Runs extracted code + optional test assertions | Code exits 0 and assertions pass |
 
 A case passes only when **all** criteria pass.
+
+## Providers
+
+| Provider | Key env var | Notes |
+|---|---|---|
+| `anthropic` | `ANTHROPIC_API_KEY` | Default provider |
+| `openai` | `OPENAI_API_KEY` | GPT-4o, o1, etc. |
+| `gemini` | `GEMINI_API_KEY` | Free tier available — get key at [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+| `ollama` | — | Local models, no key required. Set `OLLAMA_HOST` to override `http://localhost:11434` |
 
 ## Config (`.evalrc.json`)
 
@@ -119,16 +214,47 @@ Copy `.evalrc.json.example` to `.evalrc.json` and adjust:
 }
 ```
 
-Env vars `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` are also read automatically.
+API keys can be set in the config file or via environment variables — env vars take precedence:
+
+| Env var | Config key |
+|---|---|
+| `ANTHROPIC_API_KEY` | `anthropic_api_key` |
+| `OPENAI_API_KEY` | `openai_api_key` |
+| `GEMINI_API_KEY` | `gemini_api_key` |
+| `OLLAMA_HOST` | *(env only)* |
 
 ## Semantic Cache
 
 All `(model, prompt, system_prompt, temperature, max_tokens)` tuples are cached in `.eval-cache/` as SHA-256-keyed JSON files. Subsequent runs with identical inputs return the cached response instantly at zero cost. Use `--no-cache` to force a fresh call.
 
+## Custom Grader Plugins
+
+Drop a `.js` file into a `graders/` folder next to your eval YAML to add a custom grader type — no code changes needed.
+
+```js
+// graders/sentiment.js
+export default {
+  type: "sentiment",
+  run({ output, criteria }) {
+    const positive = ["good", "great", "excellent"].some(w => output.includes(w));
+    return { passed: criteria.expected === "positive" ? positive : !positive };
+  },
+};
+```
+
+```yaml
+criteria:
+  - type: sentiment
+    expected: positive
+```
+
+See `examples/plugins/sentiment_grader.js` for a full example.
+
 ## Output
 
 - **Terminal:** color-coded table with pass/fail, latency, cost, and per-criteria detail.
 - **JSON:** every run is auto-saved to `./results/<timestamp>_<suite>.json` for later inspection or CI diffing.
+- **Dashboard:** `eval dashboard` opens a browser UI with run history, charts, and a regression diff view.
 
 ## Design Decisions
 
