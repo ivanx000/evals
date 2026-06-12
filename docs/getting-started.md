@@ -16,6 +16,16 @@ export ANTHROPIC_API_KEY=sk-ant-...
 export OPENAI_API_KEY=sk-...       # optional, only if using OpenAI models
 ```
 
+**No API key? Use Ollama for free local inference:**
+
+```bash
+brew install ollama          # or: curl -fsSL https://ollama.com/install.sh | sh
+ollama pull llama3
+eval run examples/ollama-basic.yaml
+```
+
+See [providers.md](./providers.md) for full Ollama setup instructions.
+
 Optionally, install the `eval` binary globally:
 
 ```bash
@@ -112,6 +122,14 @@ eval compare examples/summarization.yaml \
 | `-v, --verbose` | Show full outputs |
 | `--timeout <ms>` | Per-case timeout in milliseconds (default: `30000`) |
 | `--concurrency <n>` | Run N cases in parallel per model (default: `1`) |
+
+### `eval providers`
+
+Show configured providers and their status (API key set, Ollama reachable):
+
+```bash
+eval providers
+```
 
 ### `eval report`
 

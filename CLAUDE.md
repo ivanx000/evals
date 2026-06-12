@@ -7,7 +7,7 @@ This is a TypeScript/Node.js CLI tool (`eval`) for evaluating LLM outputs agains
 Key directories:
 - `src/` — TypeScript source
 - `src/graders/` — individual grader implementations (one file per grader type)
-- `src/providers/` — LLM provider wrappers (Anthropic, OpenAI)
+- `src/providers/` — LLM provider wrappers (Anthropic, OpenAI, Ollama)
 - `src/dashboard/` — Express server + REST API for the web dashboard
 - `dashboard-ui/` — standalone Vite + React + TypeScript app (served by Express in prod)
 - `docs/` — reference documentation kept in sync with the code
@@ -163,6 +163,16 @@ See `docs/dashboard.md` for full reference.
 - **Provider constructors throw on missing API key.** This gives a clear error
   immediately, but the CLI also guards before calling `runSuite()` so the error
   is surfaced before any case processing begins.
+  **Exception: OllamaProvider** never requires an API key — it passes `"ollama"` as a placeholder.
+
+- **OllamaProvider uses the OpenAI SDK** pointed at `http://localhost:11434/v1` (Ollama's
+  OpenAI-compatible endpoint). `OLLAMA_HOST` env var overrides the base URL.
+  Cost is always `$0.00`. Connection errors and 404 (model not pulled) produce actionable messages.
+
+- **`provider/model` format** is supported in `eval compare --models`.
+  `parseProviderModel()` in `cli.ts` splits on the first `/`. Bare model names fall back
+  to the `--provider` flag default. `RunOptions.providerOverride` lets the runner use a
+  different provider than what the suite YAML specifies.
 
 - **Retry uses exponential backoff with jitter.** See `src/providers/retry.ts`.
   Max 3 retries. Retryable: 429, 500, 502, 503, network errors. 401 is not retried.

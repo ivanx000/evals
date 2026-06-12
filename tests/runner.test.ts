@@ -7,6 +7,7 @@ import * as path from "path";
 
 const mockAnthropicCall = vi.fn();
 const mockOpenAICall = vi.fn();
+const mockOllamaCall = vi.fn();
 
 vi.mock("../src/providers/anthropic.js", () => ({
   AnthropicProvider: vi.fn().mockImplementation(() => ({
@@ -17,6 +18,12 @@ vi.mock("../src/providers/anthropic.js", () => ({
 vi.mock("../src/providers/openai.js", () => ({
   OpenAIProvider: vi.fn().mockImplementation(() => ({
     call: mockOpenAICall,
+  })),
+}));
+
+vi.mock("../src/providers/ollama.js", () => ({
+  OllamaProvider: vi.fn().mockImplementation(() => ({
+    call: mockOllamaCall,
   })),
 }));
 

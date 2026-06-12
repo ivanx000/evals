@@ -63,6 +63,85 @@ The `llm_judge` grader always uses the Anthropic provider (Claude), even when th
 `provider` is `openai`. This is intentional — it avoids self-grading bias and keeps the
 judge model consistent across all evaluations.
 
+## ollama
+
+Runs models locally on your machine — **no API key or cost**. Uses Ollama's OpenAI-compatible REST API.
+
+Install Ollama first: https://ollama.com
+
+```bash
+# macOS
+brew install ollama
+
+# Linux / WSL
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+Pull a model before running evals:
+
+```bash
+ollama pull llama3
+ollama pull mistral
+ollama pull phi3:mini
+```
+
+```yaml
+provider: ollama
+model: llama3
+```
+
+### Supported models
+
+Any model available in the Ollama library works. Common choices:
+
+| Model | Pull command | Notes |
+|---|---|---|
+| Llama 3 8B | `ollama pull llama3` | Good general-purpose baseline |
+| Mistral 7B | `ollama pull mistral` | Fast, strong reasoning |
+| Phi-3 Mini | `ollama pull phi3:mini` | Very small, runs on low-RAM machines |
+| Code Llama | `ollama pull codellama` | Optimized for code tasks |
+| Llama 3 70B | `ollama pull llama3:70b` | High quality, needs 40 GB+ RAM |
+
+Check available models: https://ollama.com/library
+
+### Configuration
+
+| Env var | Default | Description |
+|---|---|---|
+| `OLLAMA_HOST` | `http://localhost:11434` | Base URL of the Ollama server |
+
+No API key is required. Cost is always reported as `$0.00`.
+
+### Using Ollama in eval compare
+
+Use the `provider/model` format to mix providers in a single comparison:
+
+```bash
+eval compare suite.yaml \
+  --models ollama/llama3,anthropic/claude-haiku-4-5,openai/gpt-4o-mini
+```
+
+Bare model names (no `/`) use the `--provider` flag default:
+
+```bash
+eval compare suite.yaml --models llama3,mistral --provider ollama
+```
+
+### Error messages
+
+| Error | Cause | Fix |
+|---|---|---|
+| `Could not connect to Ollama at http://localhost:11434` | Ollama server not running | Run `ollama serve` or start the Ollama app |
+| `Model 'X' not found in Ollama` | Model not pulled | Run `ollama pull X` |
+
+### Check status
+
+```bash
+eval providers
+```
+
+This pings Ollama and shows how many models are available.
+
 ## Adding a new provider
 
 1. Create `src/providers/<name>.ts` implementing the `LLMProvider` interface:
