@@ -1,0 +1,17 @@
+name: "Python Coding Benchmark"
+provider: ollama
+model: llama3
+max_tokens: 512
+dataset: examples/datasets/coding-problems.jsonl
+
+cases:
+  - id: "coding-{{id}}"
+    prompt: |
+      Solve the following Python programming problem. Write only the function, no explanation.
+
+      {{problem}}
+    criteria:
+      - type: code_execution
+        language: python
+        test_code: "{{test_code}}"
+        timeout_ms: 15000

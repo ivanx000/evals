@@ -4,6 +4,7 @@ import { gradeContains } from "./contains.js";
 import { gradeMaxWords } from "./max_words.js";
 import { gradeRegex } from "./regex.js";
 import { gradeLLMJudge } from "./llm_judge.js";
+import { gradeCodeExecution } from "./code_execution.js";
 import { loadPlugins } from "../plugins.js";
 
 // Plugins are loaded once per process and cached here
@@ -42,6 +43,9 @@ export async function runGraders(
           break;
         case "llm_judge":
           results.push(await gradeLLMJudge(output, criteria, judgeModel, judgeApiKey));
+          break;
+        case "code_execution":
+          results.push(await gradeCodeExecution(output, criteria));
           break;
         default: {
           // Try plugin graders
@@ -88,3 +92,4 @@ export { gradeContains } from "./contains.js";
 export { gradeMaxWords } from "./max_words.js";
 export { gradeRegex } from "./regex.js";
 export { gradeLLMJudge } from "./llm_judge.js";
+export { gradeCodeExecution } from "./code_execution.js";

@@ -32,12 +32,21 @@ export const LLMJudgeCriteriaSchema = z.object({
   model: z.string().optional(),
 });
 
+export const CodeExecutionCriteriaSchema = z.object({
+  type: z.literal("code_execution"),
+  language: z.enum(["python", "javascript", "bash"]),
+  test_code: z.string().optional(),
+  expected_output: z.string().optional(),
+  timeout_ms: z.number().int().positive().optional().default(10_000),
+});
+
 export const CriteriaSchema = z.discriminatedUnion("type", [
   ExactMatchCriteriaSchema,
   ContainsCriteriaSchema,
   MaxWordsCriteriaSchema,
   RegexCriteriaSchema,
   LLMJudgeCriteriaSchema,
+  CodeExecutionCriteriaSchema,
 ]);
 
 // ─── Eval suite schema ─────────────────────────────────────────────────────────
@@ -95,6 +104,7 @@ export type ContainsCriteria = z.infer<typeof ContainsCriteriaSchema>;
 export type MaxWordsCriteria = z.infer<typeof MaxWordsCriteriaSchema>;
 export type RegexCriteria = z.infer<typeof RegexCriteriaSchema>;
 export type LLMJudgeCriteria = z.infer<typeof LLMJudgeCriteriaSchema>;
+export type CodeExecutionCriteria = z.infer<typeof CodeExecutionCriteriaSchema>;
 export type Criteria = z.infer<typeof CriteriaSchema>;
 
 export type Turn = z.infer<typeof TurnSchema>;

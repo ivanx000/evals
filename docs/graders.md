@@ -112,6 +112,72 @@ The judge always uses the Anthropic provider, regardless of the suite's `provide
 | 4 | Mostly meets the rubric with minor issues |
 | 5 | Fully meets the rubric |
 
+## code_execution
+
+Extracts code from the model's output, runs it in a subprocess, and checks whether it passes.
+This is the grader to use for coding benchmarks — it tests whether generated code actually works,
+not just whether it looks plausible.
+
+```yaml
+- type: code_execution
+  language: python        # python | javascript | bash
+  test_code: |            # optional: appended after extracted code; failed assertions = fail
+    assert add(2, 3) == 5
+    assert add(-1, 1) == 0
+  timeout_ms: 15000       # optional, default 10000
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `language` | `python` \| `javascript` \| `bash` | required | Language to execute |
+| `test_code` | string | — | Code appended after model output (e.g. assert statements) |
+| `expected_output` | string | — | Expected stdout from running the code |
+| `timeout_ms` | integer | `10000` | Execution timeout in milliseconds |
+
+### Three modes
+
+**1. Run without error** (no `test_code` or `expected_output`) — passes if exit code is 0:
+```yaml
+- type: code_execution
+  language: python
+```
+
+**2. Assertion-based** (most useful for function benchmarks) — appends test cases and checks exit 0:
+```yaml
+- type: code_execution
+  language: python
+  test_code: |
+    assert reverse_string("hello") == "olleh"
+    assert reverse_string("") == ""
+```
+
+**3. Expected output** — runs the code and compares stdout:
+```yaml
+- type: code_execution
+  language: javascript
+  expected_output: "Hello, world!"
+```
+
+### Code extraction
+
+The grader extracts code from markdown fences automatically:
+- Prefers a fenced block named with the language (` ```python `)
+- Falls back to any generic fenced block (` ``` `)
+- Falls back to the raw output if no fence is found
+
+### Requirements
+
+| Language | Requires |
+|---|---|
+| `python` | `python3` in PATH |
+| `javascript` | `node` in PATH |
+| `bash` | `bash` in PATH (already available on macOS/Linux) |
+
+### Security note
+
+`code_execution` runs LLM-generated code on your local machine. Only use it with
+models and prompts you trust, in a context where arbitrary code execution is acceptable.
+
 ### Adding a built-in grader (core contributors)
 
 1. Create `src/graders/<name>.ts` exporting a `grade<Name>(output, criteria): GraderResult` function
