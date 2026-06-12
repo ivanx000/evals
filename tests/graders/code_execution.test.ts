@@ -1,22 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// ─── Mock child_process so no real code is executed ──────────────────────────
+// ─── Hoist mocks so they are available inside vi.mock() factories ─────────────
 
-const mockSpawnSync = vi.fn();
+const { mockSpawnSync, mockMkdtemp, mockWriteFile, mockRmSync } = vi.hoisted(() => ({
+  mockSpawnSync: vi.fn(),
+  mockMkdtemp: vi.fn().mockReturnValue("/tmp/llmeval-test"),
+  mockWriteFile: vi.fn(),
+  mockRmSync: vi.fn(),
+}));
 
 vi.mock("child_process", () => ({
   spawnSync: mockSpawnSync,
 }));
 
-// ─── Mock fs to avoid touching the real filesystem ───────────────────────────
-
 vi.mock("fs", async (importOriginal) => {
   const actual = await importOriginal<typeof import("fs")>();
   return {
     ...actual,
-    mkdtempSync: vi.fn().mockReturnValue("/tmp/llmeval-test"),
-    writeFileSync: vi.fn(),
-    rmSync: vi.fn(),
+    mkdtempSync: mockMkdtemp,
+    writeFileSync: mockWriteFile,
+    rmSync: mockRmSync,
   };
 });
 
