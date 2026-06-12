@@ -1,4 +1,4 @@
-# LLM Evaluation CLI — Project Guidelines
+# evals — Project Guidelines
 
 ## Project Overview
 
@@ -7,7 +7,7 @@ This is a TypeScript/Node.js CLI tool (`eval`) for evaluating LLM outputs agains
 Key directories:
 - `src/` — TypeScript source
 - `src/graders/` — individual grader implementations (one file per grader type)
-- `src/providers/` — LLM provider wrappers (Anthropic, OpenAI, Ollama)
+- `src/providers/` — LLM provider wrappers (Anthropic, OpenAI, Ollama, Gemini)
 - `src/dashboard/` — Express server + REST API for the web dashboard
 - `dashboard-ui/` — standalone Vite + React + TypeScript app (served by Express in prod)
 - `docs/` — reference documentation kept in sync with the code

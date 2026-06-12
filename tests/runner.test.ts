@@ -27,6 +27,14 @@ vi.mock("../src/providers/ollama.js", () => ({
   })),
 }));
 
+const mockGeminiCall = vi.fn();
+
+vi.mock("../src/providers/gemini.js", () => ({
+  GeminiProvider: vi.fn().mockImplementation(() => ({
+    call: mockGeminiCall,
+  })),
+}));
+
 // ─── Mock cache so tests are deterministic ────────────────────────────────────
 
 vi.mock("../src/cache.js", () => ({

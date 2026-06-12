@@ -63,6 +63,43 @@ The `llm_judge` grader always uses the Anthropic provider (Claude), even when th
 `provider` is `openai`. This is intentional — it avoids self-grading bias and keeps the
 judge model consistent across all evaluations.
 
+## gemini
+
+Uses Google's Gemini API via the OpenAI-compatible endpoint. Has a **free tier** with generous rate limits.
+
+Get a free API key at [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) — no billing required.
+
+```yaml
+provider: gemini
+model: gemini-2.0-flash
+```
+
+### Supported models and pricing
+
+| Model | ID | Input $/1M | Output $/1M | Notes |
+|---|---|---|---|---|
+| Gemini 2.5 Pro | `gemini-2.5-pro` | $1.25 | $10.00 | Most capable |
+| Gemini 2.0 Flash | `gemini-2.0-flash` | $0.10 | $0.40 | Best speed/cost ratio |
+| Gemini 1.5 Pro | `gemini-1.5-pro` | $1.25 | $5.00 | Long context (2M tokens) |
+| Gemini 1.5 Flash | `gemini-1.5-flash` | $0.075 | $0.30 | Cheapest paid option |
+
+Free tier available for all models via [Google AI Studio](https://aistudio.google.com) — rate limited but no cost.
+
+Pricing table lives in `src/types.ts` → `GEMINI_PRICING`.
+
+### Configuration
+
+| Config key | Env var | Description |
+|---|---|---|
+| `gemini_api_key` | `GEMINI_API_KEY` | API key from Google AI Studio |
+
+### Using Gemini in eval compare
+
+```bash
+evals compare suite.yaml \
+  --models gemini/gemini-2.0-flash,anthropic/claude-haiku-4-5,ollama/llama3
+```
+
 ## ollama
 
 Runs models locally on your machine — **no API key or cost**. Uses Ollama's OpenAI-compatible REST API.
