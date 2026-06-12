@@ -15,6 +15,7 @@ import { EvalSuiteSchema } from "./types.js";
 import { AnthropicProvider } from "./providers/anthropic.js";
 import { OpenAIProvider } from "./providers/openai.js";
 import { OllamaProvider } from "./providers/ollama.js";
+import { GeminiProvider } from "./providers/gemini.js";
 import { runGraders } from "./graders/index.js";
 import { cacheGet, cacheSet } from "./cache.js";
 import { expandDataset } from "./dataset.js";
@@ -74,6 +75,9 @@ function makeProvider(provider: string, config: EvalConfig) {
   }
   if (provider === "ollama") {
     return new OllamaProvider();
+  }
+  if (provider === "gemini") {
+    return new GeminiProvider(config.gemini_api_key);
   }
   return new AnthropicProvider(config.anthropic_api_key);
 }

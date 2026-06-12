@@ -31,8 +31,8 @@ import type { EvalSuite, EvalConfig, RunResult } from "./types.js";
 const program = new Command();
 
 program
-  .name("eval")
-  .description("LLM Evaluation Framework — pytest for LLM outputs")
+  .name("evals")
+  .description("evals — benchmark and compare LLMs")
   .version("0.1.0");
 
 // ─── API key guard ────────────────────────────────────────────────────────────
@@ -51,6 +51,14 @@ function checkApiKeys(suite: EvalSuite, config: EvalConfig, providerOverride?: s
     console.error("Error: OPENAI_API_KEY is required for the OpenAI provider.");
     console.error("  Set it with:          export OPENAI_API_KEY=sk-...");
     console.error("  Or add to .evalrc.json: { \"openai_api_key\": \"sk-...\" }");
+    process.exit(1);
+  }
+
+  if (provider === "gemini" && !config.gemini_api_key) {
+    console.error("Error: GEMINI_API_KEY is required for the Gemini provider.");
+    console.error("  Get a free key at:    https://aistudio.google.com/app/apikey");
+    console.error("  Set it with:          export GEMINI_API_KEY=AIza...");
+    console.error("  Or add to .evalrc.json: { \"gemini_api_key\": \"AIza...\" }");
     process.exit(1);
   }
 
@@ -402,6 +410,14 @@ program
       "openai",
       hasOpenAI ? "✅ ready" : "⚠️  no key",
       hasOpenAI ? "API key set" : "Set OPENAI_API_KEY",
+    ]);
+
+    // Gemini
+    const hasGemini = !!config.gemini_api_key;
+    table.push([
+      "gemini",
+      hasGemini ? "✅ ready" : "⚠️  no key",
+      hasGemini ? "API key set" : "Get free key: aistudio.google.com",
     ]);
 
     // Ollama — ping /api/tags

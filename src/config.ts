@@ -29,6 +29,9 @@ export function loadConfig(configPath?: string): EvalConfig {
   if (process.env.OPENAI_API_KEY && !raw.openai_api_key) {
     raw.openai_api_key = process.env.OPENAI_API_KEY;
   }
+  if (process.env.GEMINI_API_KEY && !raw.gemini_api_key) {
+    raw.gemini_api_key = process.env.GEMINI_API_KEY;
+  }
 
   return EvalConfigSchema.parse(raw);
 }

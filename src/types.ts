@@ -74,7 +74,7 @@ export const EvalSuiteSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   model: z.string().optional(),
-  provider: z.enum(["anthropic", "openai", "ollama"]).optional().default("anthropic"),
+  provider: z.enum(["anthropic", "openai", "ollama", "gemini"]).optional().default("anthropic"),
   system_prompt: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),
   max_tokens: z.number().int().positive().optional().default(1024),
@@ -89,9 +89,10 @@ export const EvalSuiteSchema = z.object({
 
 export const EvalConfigSchema = z.object({
   default_model: z.string().optional(),
-  default_provider: z.enum(["anthropic", "openai", "ollama"]).optional(),
+  default_provider: z.enum(["anthropic", "openai", "ollama", "gemini"]).optional(),
   anthropic_api_key: z.string().optional(),
   openai_api_key: z.string().optional(),
+  gemini_api_key: z.string().optional(),
   judge_model: z.string().optional().default("claude-opus-4-8"),
   results_dir: z.string().optional().default("./results"),
   cache_enabled: z.boolean().optional().default(true),
@@ -201,6 +202,13 @@ export const OPENAI_PRICING: Record<string, { input: number; output: number }> =
   "gpt-3.5-turbo":   { input: 0.50,  output: 1.50  },
 };
 
+export const GEMINI_PRICING: Record<string, { input: number; output: number }> = {
+  "gemini-2.5-pro":    { input: 1.25,  output: 10.00 },
+  "gemini-2.0-flash":  { input: 0.10,  output: 0.40  },
+  "gemini-1.5-pro":    { input: 1.25,  output: 5.00  },
+  "gemini-1.5-flash":  { input: 0.075, output: 0.30  },
+};
+
 // ─── Plugin grader interface ───────────────────────────────────────────────────
 
 export interface PluginGrader {
@@ -238,7 +246,10 @@ export function estimateCost(
   outputTokens: number
 ): number {
   if (provider === "ollama") return 0;
-  const table = provider === "openai" ? OPENAI_PRICING : ANTHROPIC_PRICING;
+  const table =
+    provider === "openai" ? OPENAI_PRICING :
+    provider === "gemini" ? GEMINI_PRICING :
+    ANTHROPIC_PRICING;
   const pricing = table[model];
   if (!pricing) return 0;
   return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;

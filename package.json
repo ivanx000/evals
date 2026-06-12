@@ -1,10 +1,10 @@
 {
-  "name": "llm-eval",
+  "name": "evals",
   "version": "0.1.0",
-  "description": "LLM Evaluation Framework CLI — pytest for LLM outputs",
+  "description": "evals — benchmark and compare LLMs",
   "main": "dist/cli.js",
   "bin": {
-    "eval": "dist/cli.js",
+    "evals": "dist/cli.js",
     "llmeval": "dist/cli.js"
   },
   "scripts": {
