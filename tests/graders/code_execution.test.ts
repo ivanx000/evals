@@ -88,7 +88,7 @@ describe("gradeCodeExecution", () => {
     mockSpawnSync.mockReturnValue(makeSpawnResult({ status: 0 }));
     const output = "Here is the solution:\n```python\nprint('hello')\n```";
     await gradeCodeExecution(output, makeCriteria({ language: "python" }));
-    const written = (vi.mocked(await import("fs")).writeFileSync as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
+    const written = mockWriteFile.mock.calls[0][1] as string;
     expect(written).toContain("print('hello')");
     expect(written).not.toContain("```");
   });
@@ -97,7 +97,7 @@ describe("gradeCodeExecution", () => {
     mockSpawnSync.mockReturnValue(makeSpawnResult({ status: 0 }));
     const output = "```\nconsole.log('hi')\n```";
     await gradeCodeExecution(output, makeCriteria({ language: "javascript" }));
-    const written = (vi.mocked(await import("fs")).writeFileSync as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
+    const written = mockWriteFile.mock.calls[0][1] as string;
     expect(written).toContain("console.log('hi')");
   });
 
@@ -107,7 +107,7 @@ describe("gradeCodeExecution", () => {
       "def add(a, b):\n    return a + b",
       makeCriteria({ test_code: "assert add(1, 1) == 2" })
     );
-    const written = (vi.mocked(await import("fs")).writeFileSync as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
+    const written = mockWriteFile.mock.calls[0][1] as string;
     expect(written).toContain("def add");
     expect(written).toContain("assert add(1, 1) == 2");
   });

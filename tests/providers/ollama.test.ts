@@ -113,7 +113,7 @@ describe("OllamaProvider", () => {
     await expect(
       provider.call({ model: "llama3", prompt: "hi", max_tokens: 64 })
     ).rejects.toThrow(/Could not connect to Ollama/);
-  });
+  }, 15_000);
 
   it("throws a clear error with pull hint when model is not found (404)", async () => {
     const notFoundError = Object.assign(new Error("Not Found"), { status: 404 });
