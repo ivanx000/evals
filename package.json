@@ -4,7 +4,8 @@
   "description": "LLM Evaluation Framework CLI — pytest for LLM outputs",
   "main": "dist/cli.js",
   "bin": {
-    "eval": "dist/cli.js"
+    "eval": "dist/cli.js",
+    "llmeval": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
