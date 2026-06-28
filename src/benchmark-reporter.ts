@@ -364,7 +364,3 @@ export function toSummary(report: BenchmarkReport): BenchmarkSummary {
     brier_score: report.calibration?.brier_score ?? null,
   };
 }
-
-function ms(n: number): string {
-  return n >= 1000 ? `${(n / 1000).toFixed(2)}s` : `${n}ms`;
-}

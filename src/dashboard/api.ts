@@ -3,6 +3,9 @@ import * as path from "path";
 import type { Request, Response } from "express";
 import type { RunResult } from "../types.js";
 import { computeDiff } from "../diff.js";
+import { listBenchmarkReports } from "../benchmark.js";
+import { toSummary } from "../benchmark-reporter.js";
+import type { BenchmarkReport } from "../benchmark-types.js";
 
 interface RunSummary {
   id: string;
@@ -48,7 +51,8 @@ function toSummary(run: RunResult): RunSummary {
   };
 }
 
-export function makeApiHandlers(resultsDir: string) {
+export function makeApiHandlers(resultsDir: string, reportsDir?: string) {
+  const benchmarksDir = reportsDir ?? path.resolve(path.dirname(resultsDir), "reports");
   return {
     listRuns(req: Request, res: Response): void {
       try {

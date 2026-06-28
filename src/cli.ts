@@ -26,6 +26,17 @@ import {
   printDiffResult,
 } from "./reporter.js";
 import { computeDiff } from "./diff.js";
+import {
+  runBenchmark,
+  saveBenchmarkReportJson,
+  listBenchmarkReports,
+} from "./benchmark.js";
+import {
+  printBenchmarkTaskProgress,
+  printBenchmarkSummary,
+  printBenchmarkList,
+  saveBenchmarkReportMarkdown,
+} from "./benchmark-reporter.js";
 import type { EvalSuite, EvalConfig, RunResult } from "./types.js";
 
 const program = new Command();
@@ -447,6 +458,113 @@ program
     }
 
     console.log("\n" + table.toString() + "\n");
+  });
+
+// ── eval benchmark ────────────────────────────────────────────────────────────
+
+const benchmarkCmd = program
+  .command("benchmark")
+  .description("Run and manage domain-specific benchmark suites");
+
+benchmarkCmd
+  .command("run <name>")
+  .description("Run a benchmark suite (looks for benchmarks/<name>/tasks.yaml)")
+  .option("--provider <provider>", "LLM provider (anthropic|openai|ollama|gemini)")
+  .option("-m, --model <model>", "Model to benchmark")
+  .option("--report-dir <dir>", "Directory to save reports (default: ./reports)", "./reports")
+  .option("--regression-threshold <pct>", "Accuracy drop % that flags a regression (default: 5)", "5")
+  .option("--concurrency <n>", "Run N tasks in parallel (default: 1)", "1")
+  .option("--timeout <ms>", "Per-task timeout in milliseconds (default: 60000)", "60000")
+  .option("--no-cache", "Disable semantic cache")
+  .option("-c, --config <path>", "Path to .evalrc.json config file")
+  .action(async (
+    name: string,
+    opts: {
+      provider?: string;
+      model?: string;
+      reportDir: string;
+      regressionThreshold: string;
+      concurrency: string;
+      timeout: string;
+      cache: boolean;
+      config?: string;
+    }
+  ) => {
+    const config = loadConfig(opts.config);
+    const provider = opts.provider ?? config.default_provider ?? "anthropic";
+    const model = opts.model ?? config.default_model ?? "claude-opus-4-8";
+
+    // API key guard
+    if (provider === "anthropic" && !config.anthropic_api_key) {
+      console.error("Error: ANTHROPIC_API_KEY is required for the Anthropic provider.");
+      process.exit(1);
+    }
+    if (provider === "openai" && !config.openai_api_key) {
+      console.error("Error: OPENAI_API_KEY is required for the OpenAI provider.");
+      process.exit(1);
+    }
+    if (provider === "gemini" && !config.gemini_api_key) {
+      console.error("Error: GEMINI_API_KEY is required for the Gemini provider.");
+      process.exit(1);
+    }
+    // llm_judge always uses Anthropic
+    if (!config.anthropic_api_key) {
+      console.error("Error: ANTHROPIC_API_KEY is required for llm_judge scoring.");
+      process.exit(1);
+    }
+
+    const benchmarkDir = path.resolve(`benchmarks/${name}`);
+    if (!fs.existsSync(benchmarkDir)) {
+      console.error(`Error: Benchmark not found at ${benchmarkDir}`);
+      console.error(`  Create benchmarks/${name}/tasks.yaml to define a benchmark.`);
+      process.exit(1);
+    }
+
+    const reportDir = path.resolve(opts.reportDir);
+
+    console.log(`\nRunning benchmark: ${name}`);
+    console.log(`  Model:    ${model} / ${provider}`);
+    console.log(`  Tasks:    ${benchmarkDir}/tasks.yaml`);
+    console.log(`  Reports:  ${reportDir}\n`);
+
+    try {
+      const report = await runBenchmark(benchmarkDir, config, {
+        model,
+        provider,
+        noCache: !opts.cache,
+        concurrency: parseInt(opts.concurrency, 10),
+        timeout: parseInt(opts.timeout, 10),
+        reportsDir: reportDir,
+        regressionThreshold: parseFloat(opts.regressionThreshold),
+        onTaskResult: printBenchmarkTaskProgress,
+      });
+
+      printBenchmarkSummary(report);
+
+      const jsonPath = saveBenchmarkReportJson(report, reportDir);
+      const mdPath = saveBenchmarkReportMarkdown(report, reportDir);
+      console.log(`Reports saved:`);
+      console.log(`  JSON: ${jsonPath}`);
+      console.log(`  MD:   ${mdPath}\n`);
+
+      if (report.regression?.threshold_exceeded) {
+        process.exitCode = 1;
+      }
+    } catch (err) {
+      console.error(`\nError: ${(err as Error).message}`);
+      process.exitCode = 1;
+    }
+  });
+
+benchmarkCmd
+  .command("list")
+  .description("List saved benchmark reports")
+  .option("--report-dir <dir>", "Directory to scan for reports (default: ./reports)", "./reports")
+  .option("--benchmark <name>", "Filter by benchmark name")
+  .action((opts: { reportDir: string; benchmark?: string }) => {
+    const reportDir = path.resolve(opts.reportDir);
+    const reports = listBenchmarkReports(reportDir, opts.benchmark);
+    printBenchmarkList(reports);
   });
 
 program.parse(process.argv);
