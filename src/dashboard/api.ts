@@ -153,5 +153,30 @@ export function makeApiHandlers(resultsDir: string, reportsDir?: string) {
         res.status(500).json({ error: (err as Error).message });
       }
     },
+
+    listBenchmarks(req: Request, res: Response): void {
+      try {
+        const benchmark = req.query.benchmark ? String(req.query.benchmark) : undefined;
+        const reports = listBenchmarkReports(benchmarksDir, benchmark);
+        res.json(reports.map(toSummary));
+      } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+      }
+    },
+
+    getBenchmark(req: Request, res: Response): void {
+      try {
+        const { id } = req.params;
+        const reports = listBenchmarkReports(benchmarksDir);
+        const report = reports.find((r: BenchmarkReport) => r.run_id === id);
+        if (!report) {
+          res.status(404).json({ error: "Benchmark report not found" });
+          return;
+        }
+        res.json(report);
+      } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+      }
+    },
   };
 }

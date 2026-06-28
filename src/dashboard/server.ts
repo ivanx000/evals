@@ -7,6 +7,7 @@ import { registerRoutes } from "./routes.js";
 export interface ServerOptions {
   port: number;
   resultsDir: string;
+  reportsDir?: string;
 }
 
 export function createServer(opts: ServerOptions): express.Express {
@@ -14,7 +15,7 @@ export function createServer(opts: ServerOptions): express.Express {
   app.use(cors());
   app.use(express.json());
 
-  registerRoutes(app, opts.resultsDir);
+  registerRoutes(app, opts.resultsDir, opts.reportsDir);
 
   const uiDist = path.resolve(__dirname, "../../dashboard-ui/dist");
   if (fs.existsSync(uiDist)) {
