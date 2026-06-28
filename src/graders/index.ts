@@ -5,6 +5,7 @@ import { gradeMaxWords } from "./max_words.js";
 import { gradeRegex } from "./regex.js";
 import { gradeLLMJudge } from "./llm_judge.js";
 import { gradeCodeExecution } from "./code_execution.js";
+import { gradeNumericTolerance } from "./numeric_tolerance.js";
 import { loadPlugins } from "../plugins.js";
 
 // Plugins are loaded once per process and cached here
@@ -46,6 +47,9 @@ export async function runGraders(
           break;
         case "code_execution":
           results.push(await gradeCodeExecution(output, criteria));
+          break;
+        case "numeric_tolerance":
+          results.push(gradeNumericTolerance(output, criteria));
           break;
         default: {
           // Try plugin graders
@@ -93,3 +97,4 @@ export { gradeMaxWords } from "./max_words.js";
 export { gradeRegex } from "./regex.js";
 export { gradeLLMJudge } from "./llm_judge.js";
 export { gradeCodeExecution } from "./code_execution.js";
+export { gradeNumericTolerance } from "./numeric_tolerance.js";

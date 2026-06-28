@@ -1,0 +1,269 @@
+name: "Financial Reasoning"
+version: "1.0.0"
+description: >
+  CFA Level 1–style financial reasoning benchmark covering ratio analysis,
+  earnings interpretation, risk assessment, and core market concepts.
+  Tasks are graded via exact numeric tolerance or LLM judge rubric.
+
+tasks:
+  # ── Ratio Analysis ──────────────────────────────────────────────────────────
+
+  - id: pe_ratio_basic
+    question: >
+      Company XYZ has a stock price of $75.00 per share and earned $5.00 per share
+      over the trailing twelve months. Calculate the price-to-earnings (P/E) ratio.
+      Provide only the final numerical answer (e.g., 15.0).
+    reference_answer: "15.0"
+    grader: numeric_tolerance
+    tolerance_pct: 2.0
+    difficulty: easy
+    category: ratio_analysis
+
+  - id: current_ratio
+    question: >
+      A manufacturing firm reports current assets of $840,000 and current liabilities
+      of $350,000 at fiscal year-end. Calculate the current ratio to two decimal places.
+      Provide only the final numerical answer (e.g., 2.40).
+    reference_answer: "2.4"
+    grader: numeric_tolerance
+    tolerance_pct: 2.0
+    difficulty: easy
+    category: ratio_analysis
+
+  - id: roe_average_equity
+    question: >
+      Company ABC reported net income of $126 million for the fiscal year. Shareholders'
+      equity was $800 million at the start of the year and $1,000 million at year-end.
+      Calculate return on equity (ROE) using average equity. Express your answer as a
+      percentage (e.g., 14.0 for 14.0%).
+    reference_answer: "14.0"
+    grader: numeric_tolerance
+    tolerance_pct: 2.0
+    difficulty: medium
+    category: ratio_analysis
+
+  - id: wacc_calculation
+    question: >
+      A company's capital structure consists of 60% equity with a required return of 12%,
+      and 40% debt at a pre-tax cost of 5%. The marginal corporate tax rate is 30%.
+      Calculate the weighted average cost of capital (WACC). Express your answer as a
+      percentage (e.g., 8.6 for 8.6%).
+    reference_answer: "8.6"
+    grader: numeric_tolerance
+    tolerance_pct: 1.0
+    difficulty: medium
+    category: ratio_analysis
+
+  - id: capm_expected_return
+    question: >
+      Using the Capital Asset Pricing Model (CAPM): the risk-free rate is 3.0%,
+      the equity risk premium is 6.0%, and a stock has a beta of 1.2.
+      Calculate the expected return for this stock. Express your answer as a
+      percentage (e.g., 10.2 for 10.2%).
+    reference_answer: "10.2"
+    grader: numeric_tolerance
+    tolerance_pct: 1.0
+    difficulty: easy
+    category: ratio_analysis
+
+  # ── Earnings Interpretation ─────────────────────────────────────────────────
+
+  - id: revenue_growth_rate
+    question: >
+      A company reported revenue of $2.40 billion in fiscal year 2022 and $2.76 billion
+      in fiscal year 2023. Calculate the year-over-year revenue growth rate.
+      Express your answer as a percentage (e.g., 15.0 for 15.0%).
+    reference_answer: "15.0"
+    grader: numeric_tolerance
+    tolerance_pct: 1.0
+    difficulty: easy
+    category: earnings_interpretation
+
+  - id: eps_dilution
+    question: >
+      Company DEF has 100 million basic shares outstanding and reported net income of
+      $50 million for the year (EPS = $0.50). The company announces a secondary offering
+      of 20 million new shares at the current market price to fund an acquisition.
+      Assuming the acquisition generates no immediate incremental earnings, explain the
+      impact on earnings per share and why long-term investors might be concerned.
+    reference_answer: >
+      EPS decreases from $0.50 to approximately $0.42 because the same net income
+      ($50M) is now divided by 120M shares. This dilutes existing shareholders.
+    grader: llm_judge
+    rubric: >
+      The response explains share dilution clearly. Score 5 if it: (1) states EPS will
+      decrease, (2) correctly computes the new EPS (~$0.417, same $50M ÷ 120M shares),
+      (3) explains the mechanism (earnings unchanged but denominator grows), and (4) notes
+      investor concern about dilution without proportional earnings growth. Score 3 if EPS
+      decline and dilution are correct but quantification is missing. Score 1 if the
+      direction of EPS change is wrong or dilution is misunderstood.
+    difficulty: medium
+    category: earnings_interpretation
+
+  - id: earnings_quality_red_flags
+    question: >
+      A technology company reports a GAAP net loss of $45 million but an "adjusted
+      non-GAAP EPS" of +$0.65, achieved by excluding: (a) $62 million of stock-based
+      compensation, (b) $18 million of restructuring charges — this is the third
+      consecutive year with such charges — and (c) $15 million of M&A-related
+      intangible amortization. As an equity analyst, evaluate the quality of this
+      company's earnings and identify the red flags.
+    reference_answer: >
+      Key red flags: SBC is a recurring economic cost; restructuring charges that recur
+      for 3 years are not non-recurring; the $110M gap between GAAP and adjusted metrics
+      warrants skepticism. Recommend validating against operating cash flow.
+    grader: llm_judge
+    rubric: >
+      Score 5 if the response: (1) argues stock-based compensation is a real, recurring
+      economic cost that should not be excluded, (2) explicitly flags that recurring
+      "one-time" restructuring charges (three consecutive years) undermine the non-recurring
+      classification, (3) notes the sheer size of the GAAP-to-adjusted gap ($110M) as a
+      warning sign, and (4) recommends cross-referencing adjusted figures with cash flow
+      from operations. Score 3 if 2–3 of these issues are identified. Score 1 if the
+      adjusted metrics are treated as more reliable without critical analysis.
+    difficulty: hard
+    category: earnings_interpretation
+
+  - id: operating_leverage
+    question: >
+      A manufacturer has annual revenue of $100 million with cost of goods sold equal to
+      40% of revenue (gross margin = 60%). Fixed operating expenses (SG&A) total
+      $45 million annually and are not expected to change. Revenue is forecast to grow
+      10% next year. Calculate current and projected operating income, then explain the
+      concept of operating leverage as demonstrated by this scenario.
+    reference_answer: >
+      Current operating income: $60M - $45M = $15M. Projected (10% revenue growth):
+      $66M gross profit - $45M SG&A = $21M. Revenue +10% → operating income +40%.
+      Fixed costs amplify revenue growth into a larger percentage gain in operating profit.
+    grader: llm_judge
+    rubric: >
+      Score 5 if the response: (1) correctly calculates current operating income ($15M),
+      (2) correctly calculates projected operating income ($21M), (3) identifies that a
+      10% revenue increase produces a 40% operating income increase, and (4) explains
+      operating leverage: fixed costs mean incremental revenue flows through to profit at
+      a higher margin, amplifying both gains and losses. Score 3 if the calculations are
+      correct but the leverage concept is superficial. Score 1 if the operating income
+      figures are wrong.
+    difficulty: hard
+    category: earnings_interpretation
+
+  # ── Risk Assessment ─────────────────────────────────────────────────────────
+
+  - id: interest_coverage_ratio
+    question: >
+      A company reported EBIT (earnings before interest and taxes) of $80 million and
+      paid $25 million in interest expense during the fiscal year. Calculate the interest
+      coverage ratio (also called times interest earned). Provide only the final
+      numerical answer to two decimal places (e.g., 3.20).
+    reference_answer: "3.2"
+    grader: numeric_tolerance
+    tolerance_pct: 2.0
+    difficulty: medium
+    category: risk_assessment
+
+  - id: liquidity_deterioration
+    question: >
+      A retail company's quick ratio fell from 1.8 to 0.7 in a single quarter. During
+      the same period, inventory rose 35% and accounts receivable days outstanding
+      increased from 32 to 48 days. The CFO dismissed the decline as "temporary seasonal
+      effects." Assess the credibility of this explanation and identify what additional
+      information an analyst should demand before accepting it.
+    reference_answer: >
+      The explanation is suspect. A quick ratio below 1.0 means liquid assets cannot
+      cover current liabilities. The inventory build and rising DSO compound concerns.
+      Analyst should review operating cash flow, AR aging schedules, upcoming debt
+      maturities, and whether the inventory is saleable.
+    grader: llm_judge
+    rubric: >
+      Score 5 if the response: (1) expresses clear skepticism — a quick ratio drop from
+      1.8 to 0.7 is severe and puts it below 1.0 (liquid assets no longer cover current
+      liabilities), (2) flags the simultaneous inventory build (demand weakness or
+      obsolescence risk) and rising DSO (collection issues or channel stuffing) as
+      compounding signals, (3) requests at least 3 specific items: operating cash flow
+      statement, AR aging schedule, nature and breadth of inventory build, and any
+      upcoming debt maturities. Score 3 if skepticism is expressed and 2+ investigative
+      steps are identified. Score 1 if the seasonal explanation is accepted without
+      scrutiny.
+    difficulty: medium
+    category: risk_assessment
+
+  - id: credit_risk_profile
+    question: >
+      A manufacturing firm has: long-term debt of $650 million, EBITDA of $95 million
+      (net leverage ~6.8×), interest expense of $42 million (interest coverage ~2.3×),
+      and a current ratio of 0.85. Its bonds are rated B by S&P. These bonds are
+      currently priced to yield 6.5%, while the B-rated benchmark yield is 8.0%.
+      Describe the credit risk profile and state whether you would buy these bonds at
+      the current price. Justify your recommendation.
+    reference_answer: >
+      The firm is highly leveraged (6.8× net debt/EBITDA vs. ~3–4× investment grade),
+      coverage is thin (2.3×), and the current ratio signals near-term liquidity risk.
+      At 6.5% yield vs. 8.0% benchmark, the bonds are overpriced — the spread
+      undercompensates for the risk. Do not buy at par.
+    grader: llm_judge
+    rubric: >
+      Score 5 if the response: (1) identifies the 6.8× leverage as well above investment-
+      grade thresholds (~3–4×), (2) notes that 2.3× interest coverage is thin with little
+      cushion, (3) flags the current ratio below 1.0 as a near-term liquidity concern, and
+      (4) recommends NOT buying — correctly arguing that a 6.5% yield is tighter than the
+      8.0% B-rated benchmark, meaning the bonds offer insufficient compensation for the
+      credit risk. Score 3 if three of the four points are covered. Score 1 if the yield
+      analysis is omitted or the buy/no-buy recommendation is incorrect.
+    difficulty: hard
+    category: risk_assessment
+
+  # ── Market Concepts ─────────────────────────────────────────────────────────
+
+  - id: emh_technical_analysis
+    question: >
+      A portfolio manager claims she can consistently generate alpha by applying a
+      moving-average-crossover technical strategy to publicly traded large-cap equities.
+      Under the semi-strong form of the Efficient Market Hypothesis (EMH), evaluate
+      whether her claim is theoretically defensible and what evidence would be needed
+      to validate it empirically.
+    reference_answer: >
+      Semi-strong EMH holds that all publicly available information — including price
+      history — is already reflected in prices. Technical analysis uses only public
+      price data, so it should provide no edge. Empirical validation would require
+      statistically significant, risk-adjusted excess returns across multiple market
+      regimes, after transaction costs, over a long time horizon.
+    grader: llm_judge
+    rubric: >
+      Score 5 if the response: (1) correctly defines semi-strong EMH (all public
+      information, including price history, is priced in), (2) explains that technical
+      analysis relies solely on historical price data — public information — and therefore
+      cannot provide a consistent edge under semi-strong EMH, (3) notes that semi-strong
+      EMH is a stronger claim than weak-form (which already excludes technical analysis),
+      and (4) specifies that empirical validation requires risk-adjusted, statistically
+      significant alpha over a long horizon across multiple regimes after costs. Score 3
+      if EMH is defined correctly and the implication for technical analysis is logically
+      derived. Score 1 if EMH forms are confused or the implication is reversed.
+    difficulty: medium
+    category: market_concepts
+
+  - id: bond_duration_price_change
+    question: >
+      A bond has a modified duration of 7.5 years. If market interest rates rise by
+      50 basis points (0.50 percentage points), estimate the approximate percentage
+      decrease in the bond's price using the duration approximation. Express your answer
+      as a positive number representing the percentage price decrease
+      (e.g., 3.75 for a 3.75% decrease).
+    reference_answer: "3.75"
+    grader: numeric_tolerance
+    tolerance_pct: 5.0
+    difficulty: medium
+    category: market_concepts
+
+  - id: dividend_discount_model
+    question: >
+      A mature utility company is expected to pay a dividend of $3.00 per share next
+      year. The dividend is expected to grow at a constant rate of 3.5% per year
+      indefinitely. Equity investors require a return of 8.5% for this stock.
+      Using the Gordon Growth Model (constant-growth DDM), calculate the intrinsic
+      value per share. Provide only the final numerical answer in dollars
+      (e.g., 60.00 for a $60.00 intrinsic value).
+    reference_answer: "60.0"
+    grader: numeric_tolerance
+    tolerance_pct: 1.0
+    difficulty: hard
+    category: market_concepts

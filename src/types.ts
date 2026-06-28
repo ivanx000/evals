@@ -113,6 +113,7 @@ export type MaxWordsCriteria = z.infer<typeof MaxWordsCriteriaSchema>;
 export type RegexCriteria = z.infer<typeof RegexCriteriaSchema>;
 export type LLMJudgeCriteria = z.infer<typeof LLMJudgeCriteriaSchema>;
 export type CodeExecutionCriteria = z.infer<typeof CodeExecutionCriteriaSchema>;
+export type NumericToleranceCriteria = z.infer<typeof NumericToleranceCriteriaSchema>;
 export type Criteria = z.infer<typeof CriteriaSchema>;
 
 export type Turn = z.infer<typeof TurnSchema>;
