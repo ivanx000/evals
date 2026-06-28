@@ -40,6 +40,12 @@ export const CodeExecutionCriteriaSchema = z.object({
   timeout_ms: z.number().int().positive().optional().default(10_000),
 });
 
+export const NumericToleranceCriteriaSchema = z.object({
+  type: z.literal("numeric_tolerance"),
+  value: z.number(),
+  tolerance_pct: z.number().positive().optional().default(2.0),
+});
+
 export const CriteriaSchema = z.discriminatedUnion("type", [
   ExactMatchCriteriaSchema,
   ContainsCriteriaSchema,
@@ -47,6 +53,7 @@ export const CriteriaSchema = z.discriminatedUnion("type", [
   RegexCriteriaSchema,
   LLMJudgeCriteriaSchema,
   CodeExecutionCriteriaSchema,
+  NumericToleranceCriteriaSchema,
 ]);
 
 // ─── Eval suite schema ─────────────────────────────────────────────────────────
