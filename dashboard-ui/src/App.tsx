@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
 import { Overview } from "./pages/Overview";
 import { RunDetail } from "./pages/RunDetail";
 import { Compare } from "./pages/Compare";
+import { Benchmarks } from "./pages/Benchmarks";
 
 function Nav() {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -15,6 +16,7 @@ function Nav() {
       <span className="text-gray-400 text-sm font-semibold mr-2 select-none">eval</span>
       <NavLink to="/" end className={linkClass}>Overview</NavLink>
       <NavLink to="/compare" className={linkClass}>Compare</NavLink>
+      <NavLink to="/benchmarks" className={linkClass}>Benchmarks</NavLink>
     </nav>
   );
 }
@@ -29,6 +31,7 @@ export default function App() {
             <Route path="/" element={<Overview />} />
             <Route path="/runs/:id" element={<RunDetail />} />
             <Route path="/compare" element={<Compare />} />
+            <Route path="/benchmarks" element={<Benchmarks />} />
           </Routes>
         </main>
       </div>

@@ -106,8 +106,8 @@ export function printBenchmarkSummary(report: BenchmarkReport): void {
     if (r.regressed_tasks.length > 0) {
       console.log(`  ${RED}Regressed (${r.regressed_tasks.length}):${RESET} ${r.regressed_tasks.join(", ")}`);
     }
-    if (r.improvements.length > 0) {
-      console.log(`  ${GREEN}Improved (${r.improvements.length}):${RESET} ${r.improvements.join(", ")}`);
+    if (r.improved_tasks.length > 0) {
+      console.log(`  ${GREEN}Improved (${r.improved_tasks.length}):${RESET} ${r.improved_tasks.join(", ")}`);
     }
     if (r.threshold_exceeded) {
       console.log(`  ${RED}${BOLD}⚠  Accuracy dropped more than threshold — review required.${RESET}`);

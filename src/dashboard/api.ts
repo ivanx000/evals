@@ -4,7 +4,7 @@ import type { Request, Response } from "express";
 import type { RunResult } from "../types.js";
 import { computeDiff } from "../diff.js";
 import { listBenchmarkReports } from "../benchmark.js";
-import { toSummary } from "../benchmark-reporter.js";
+import { toSummary as toBenchmarkSummary } from "../benchmark-reporter.js";
 import type { BenchmarkReport } from "../benchmark-types.js";
 
 interface RunSummary {
