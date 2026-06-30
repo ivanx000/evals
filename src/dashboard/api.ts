@@ -158,7 +158,7 @@ export function makeApiHandlers(resultsDir: string, reportsDir?: string) {
       try {
         const benchmark = req.query.benchmark ? String(req.query.benchmark) : undefined;
         const reports = listBenchmarkReports(benchmarksDir, benchmark);
-        res.json(reports.map(toSummary));
+        res.json(reports.map(toBenchmarkSummary));
       } catch (err) {
         res.status(500).json({ error: (err as Error).message });
       }
