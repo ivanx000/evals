@@ -1,15 +1,15 @@
 # Dashboard
 
-The `eval dashboard` command spins up a local web app that reads from your `results/` folder and lets you explore eval runs visually.
+The `evals dashboard` command spins up a local web app that reads from your `results/` folder and lets you explore eval runs visually.
 
 ## Starting the dashboard
 
 ```bash
 # Production (requires a built UI)
-eval dashboard
+evals dashboard
 
 # With options
-eval dashboard --port 8080 --results-dir ./my-results
+evals dashboard --port 8080 --results-dir ./my-results
 ```
 
 Flags:
@@ -54,7 +54,7 @@ The compiled app lands in `dashboard-ui/dist/`. The Express server serves it as 
 
 ### Run detail (`/runs/:id`)
 
-Drill into a single eval run:
+Drill into a single evals run:
 
 - Header showing suite name, model, provider, pass rate, latency, cost
 - Filters: pass/fail toggle, grader type dropdown, free-text search

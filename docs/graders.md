@@ -259,7 +259,7 @@ cases:
 **3. Run as normal:**
 
 ```bash
-eval run suite.yaml
+evals run suite.yaml
 ```
 
 A working example is included at `examples/plugins/sentiment_grader.js`.

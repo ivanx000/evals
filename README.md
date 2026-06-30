@@ -1,4 +1,4 @@
-# LLM Evaluation Framework CLI
+# evals
 
 A pytest-style evaluation framework for LLM outputs. Define test suites in YAML, run them against any model, grade outputs with deterministic criteria or an LLM judge, and compare results across models.
 
@@ -16,79 +16,79 @@ Or install globally after building:
 
 ```bash
 npm link
-eval run examples/summarization.yaml
+evals run examples/summarization.yaml
 ```
 
 ## Commands
 
-### `eval run <suite.yaml>`
+### `evals run <suite.yaml>`
 
 Run a test suite and display results in a table.
 
 ```bash
-eval run examples/summarization.yaml
-eval run examples/summarization.yaml --model claude-sonnet-4-6
-eval run examples/summarization.yaml --watch          # re-run on file save
-eval run examples/summarization.yaml --no-cache       # skip semantic cache
-eval run examples/summarization.yaml --verbose        # show full outputs + judge reasoning
-eval run examples/summarization.yaml --json out.json  # also write raw JSON to a path
-eval run examples/summarization.yaml --dataset examples/datasets/prompts.jsonl  # override dataset
+evals run examples/summarization.yaml
+evals run examples/summarization.yaml --model claude-sonnet-4-6
+evals run examples/summarization.yaml --watch          # re-run on file save
+evals run examples/summarization.yaml --no-cache       # skip semantic cache
+evals run examples/summarization.yaml --verbose        # show full outputs + judge reasoning
+evals run examples/summarization.yaml --json out.json  # also write raw JSON to a path
+evals run examples/summarization.yaml --dataset examples/datasets/prompts.jsonl  # override dataset
 ```
 
-### `eval compare <suite.yaml> --models <model1,model2,...>`
+### `evals compare <suite.yaml> --models <model1,model2,...>`
 
 Run the same suite against multiple models and print a side-by-side comparison.
 
 ```bash
-eval compare examples/summarization.yaml \
+evals compare examples/summarization.yaml \
   --models claude-haiku-4-5,claude-sonnet-4-6,claude-opus-4-8
 
-eval compare examples/summarization.yaml \
+evals compare examples/summarization.yaml \
   --models gpt-4o-mini,gpt-4o \
   --provider openai
 
 # Mix providers with provider/model syntax
-eval compare examples/summarization.yaml \
+evals compare examples/summarization.yaml \
   --models anthropic/claude-haiku-4-5,gemini/gemini-2.0-flash,ollama/llama3
 ```
 
-### `eval diff <baseline> <candidate>`
+### `evals diff <baseline> <candidate>`
 
 Compare two saved result files and report regressions and improvements. Exits with code 1 if any regressions are found — useful in CI.
 
 ```bash
-eval diff results/2024-01-01_suite.json results/2024-01-02_suite.json
-eval diff baseline.json candidate.json --format json
+evals diff results/2024-01-01_suite.json results/2024-01-02_suite.json
+evals diff baseline.json candidate.json --format json
 ```
 
-### `eval report`
+### `evals report`
 
 List stored results from `./results/`.
 
 ```bash
-eval report
-eval report --last 5
-eval report --suite summarization
+evals report
+evals report --last 5
+evals report --suite summarization
 ```
 
-### `eval dashboard`
+### `evals dashboard`
 
 Spin up a local web dashboard to visualize and compare eval results.
 
 ```bash
-eval dashboard
-eval dashboard --port 8080
-eval dashboard --results-dir ./my-results
+evals dashboard
+evals dashboard --port 8080
+evals dashboard --results-dir ./my-results
 ```
 
 Opens a browser at `http://localhost:3000`. The dashboard shows run history, per-case breakdowns, and a side-by-side comparison view with a regression tab.
 
-### `eval providers`
+### `evals providers`
 
 Show configured providers and their API key status.
 
 ```bash
-eval providers
+evals providers
 ```
 
 ## Suite YAML Format
@@ -254,7 +254,7 @@ See `examples/plugins/sentiment_grader.js` for a full example.
 
 - **Terminal:** color-coded table with pass/fail, latency, cost, and per-criteria detail.
 - **JSON:** every run is auto-saved to `./results/<timestamp>_<suite>.json` for later inspection or CI diffing.
-- **Dashboard:** `eval dashboard` opens a browser UI with run history, charts, and a regression diff view.
+- **Dashboard:** `evals dashboard` opens a browser UI with run history, charts, and a regression diff view.
 
 ## Design Decisions
 

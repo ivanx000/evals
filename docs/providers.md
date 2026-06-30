@@ -93,7 +93,7 @@ Pricing table lives in `src/types.ts` → `GEMINI_PRICING`.
 |---|---|---|
 | `gemini_api_key` | `GEMINI_API_KEY` | API key from Google AI Studio |
 
-### Using Gemini in eval compare
+### Using Gemini in evals compare
 
 ```bash
 evals compare suite.yaml \
@@ -149,19 +149,19 @@ Check available models: https://ollama.com/library
 
 No API key is required. Cost is always reported as `$0.00`.
 
-### Using Ollama in eval compare
+### Using Ollama in evals compare
 
 Use the `provider/model` format to mix providers in a single comparison:
 
 ```bash
-eval compare suite.yaml \
+evals compare suite.yaml \
   --models ollama/llama3,anthropic/claude-haiku-4-5,openai/gpt-4o-mini
 ```
 
 Bare model names (no `/`) use the `--provider` flag default:
 
 ```bash
-eval compare suite.yaml --models llama3,mistral --provider ollama
+evals compare suite.yaml --models llama3,mistral --provider ollama
 ```
 
 ### Error messages
@@ -174,7 +174,7 @@ eval compare suite.yaml --models llama3,mistral --provider ollama
 ### Check status
 
 ```bash
-eval providers
+evals providers
 ```
 
 This pings Ollama and shows how many models are available.

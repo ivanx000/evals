@@ -20,7 +20,7 @@ cases:
 Run it with:
 
 ```bash
-eval run my-suite.yaml
+evals run my-suite.yaml
 ```
 
 ---
@@ -67,7 +67,7 @@ dataset_sample: 20     # or run a random sample of 20 rows
 ### Overriding the dataset at runtime
 
 ```bash
-eval run suite.yaml --dataset ./other-dataset.jsonl
+evals run suite.yaml --dataset ./other-dataset.jsonl
 ```
 
 ### Using multiple templates
@@ -162,9 +162,9 @@ See `examples/multi-turn-memory.yaml` for a complete working example.
 ## Filter, dry-run, and other flags
 
 ```bash
-eval run suite.yaml --filter smoke         # run only cases with "smoke" in id or tag
-eval run suite.yaml --dry-run              # validate YAML, print what would run
-eval run suite.yaml --concurrency 5        # run 5 cases in parallel
-eval run suite.yaml --timeout 10000        # 10-second per-case timeout
-eval run suite.yaml --no-cache             # disable semantic cache
+evals run suite.yaml --filter smoke         # run only cases with "smoke" in id or tag
+evals run suite.yaml --dry-run              # validate YAML, print what would run
+evals run suite.yaml --concurrency 5        # run 5 cases in parallel
+evals run suite.yaml --timeout 10000        # 10-second per-case timeout
+evals run suite.yaml --no-cache             # disable semantic cache
 ```

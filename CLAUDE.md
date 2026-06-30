@@ -108,12 +108,12 @@ npm run test:watch # vitest (interactive watch mode)
 # Dashboard
 npm run dashboard:dev          # concurrently: Express API (3000) + Vite UI (5173)
 cd dashboard-ui && npm run build  # build UI to dashboard-ui/dist/
-eval dashboard                 # serve built UI + API, opens browser at localhost:3000
+evals dashboard                 # serve built UI + API, opens browser at localhost:3000
 ```
 
 ## Dashboard architecture
 
-`eval dashboard` starts an Express server at `src/dashboard/server.ts` and opens the browser.
+`evals dashboard` starts an Express server at `src/dashboard/server.ts` and opens the browser.
 
 The React app lives in `dashboard-ui/` (Vite + React + TypeScript + Tailwind + Recharts).
 
@@ -140,7 +140,7 @@ See `docs/dashboard.md` for full reference.
   the provider; the last null turn is evaluated by graders. `ProviderCallOptions` now accepts either
   `prompt` (string) or `messages` (array) — both providers handle both.
 
-- **Regression detection.** `src/diff.ts` + `eval diff <baseline> <candidate>` command.
+- **Regression detection.** `src/diff.ts` + `evals diff <baseline> <candidate>` command.
   Matches cases by `case_id`, compares per-grader results, detects regressions (pass→fail) and
   improvements (fail→pass). `--format json` for CI pipelines. Exit code 1 on any regression.
   The Compare page in the dashboard has a Regressions tab using `GET /api/diff`.
@@ -169,7 +169,7 @@ See `docs/dashboard.md` for full reference.
   OpenAI-compatible endpoint). `OLLAMA_HOST` env var overrides the base URL.
   Cost is always `$0.00`. Connection errors and 404 (model not pulled) produce actionable messages.
 
-- **`provider/model` format** is supported in `eval compare --models`.
+- **`provider/model` format** is supported in `evals compare --models`.
   `parseProviderModel()` in `cli.ts` splits on the first `/`. Bare model names fall back
   to the `--provider` flag default. `RunOptions.providerOverride` lets the runner use a
   different provider than what the suite YAML specifies.

@@ -1,6 +1,6 @@
 # Regression Detection
 
-`eval diff` compares two result files and tells you exactly what changed: which cases regressed (pass → fail), which improved (fail → pass), and which are new or removed.
+`evals diff` compares two result files and tells you exactly what changed: which cases regressed (pass → fail), which improved (fail → pass), and which are new or removed.
 
 ## Workflow
 
@@ -8,18 +8,18 @@
 1. Run evals on your current prompt/model → save as baseline
 2. Make changes (new prompt, new model, etc.)
 3. Run evals again → save as candidate
-4. Run eval diff to see what changed
+4. Run evals diff to see what changed
 ```
 
 ### Step 1 — Save a baseline
 
 ```bash
-eval run suite.yaml --output results/baseline.json
+evals run suite.yaml --output results/baseline.json
 ```
 
 Or use the auto-saved result in `./results/`:
 ```bash
-eval run suite.yaml
+evals run suite.yaml
 # Results saved → ./results/2026-06-10T18-00-00_my_suite.json
 ```
 
@@ -30,13 +30,13 @@ Edit your YAML, switch models, tweak the system prompt — whatever you're testi
 ### Step 3 — Run again
 
 ```bash
-eval run suite.yaml --output results/candidate.json
+evals run suite.yaml --output results/candidate.json
 ```
 
 ### Step 4 — Diff
 
 ```bash
-eval diff results/baseline.json results/candidate.json
+evals diff results/baseline.json results/candidate.json
 ```
 
 Output:
@@ -77,8 +77,8 @@ Use exit code 1 in CI to block merges when evals regress:
 
 ```bash
 # In your CI pipeline
-eval run suite.yaml --output results/candidate.json
-eval diff results/baseline.json results/candidate.json  # exits 1 if regressions
+evals run suite.yaml --output results/candidate.json
+evals diff results/baseline.json results/candidate.json  # exits 1 if regressions
 ```
 
 ## JSON output
@@ -86,7 +86,7 @@ eval diff results/baseline.json results/candidate.json  # exits 1 if regressions
 For CI pipelines and scripting, use `--format json`:
 
 ```bash
-eval diff baseline.json candidate.json --format json
+evals diff baseline.json candidate.json --format json
 ```
 
 Returns:
@@ -125,4 +125,4 @@ Cases are matched between runs by `case_id`. Per-grader results are compared ind
 
 ## Dashboard
 
-The Compare page in `eval dashboard` has a **Regressions** tab. Select two runs (baseline first, candidate second) and switch to the tab to see the same diff visualized with color coding: red rows for regressions, green for improvements.
+The Compare page in `evals dashboard` has a **Regressions** tab. Select two runs (baseline first, candidate second) and switch to the tab to see the same diff visualized with color coding: red rows for regressions, green for improvements.

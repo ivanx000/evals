@@ -21,7 +21,7 @@ export OPENAI_API_KEY=sk-...       # optional, only if using OpenAI models
 ```bash
 brew install ollama          # or: curl -fsSL https://ollama.com/install.sh | sh
 ollama pull llama3
-eval run examples/ollama-basic.yaml
+evals run examples/ollama-basic.yaml
 ```
 
 See [providers.md](./providers.md) for full Ollama setup instructions.
@@ -30,7 +30,7 @@ Optionally, install the `eval` binary globally:
 
 ```bash
 npm link
-eval --help
+evals --help
 ```
 
 Or use it directly without installing:
@@ -57,12 +57,12 @@ Config is auto-discovered in the working directory. Override with `--config <pat
 
 ## Commands
 
-### `eval run <suite.yaml>`
+### `evals run <suite.yaml>`
 
 Run all cases in a suite and display a results table.
 
 ```bash
-eval run examples/summarization.yaml
+evals run examples/summarization.yaml
 ```
 
 **Options:**
@@ -85,29 +85,29 @@ eval run examples/summarization.yaml
 
 ```bash
 # Run only cases tagged "smoke" or with "smoke" in their ID
-eval run suite.yaml --filter smoke
+evals run suite.yaml --filter smoke
 
 # Validate a suite without making any API calls
-eval run suite.yaml --dry-run
+evals run suite.yaml --dry-run
 
 # Run up to 4 cases at a time, with a 60-second timeout each
-eval run suite.yaml --concurrency 4 --timeout 60000
+evals run suite.yaml --concurrency 4 --timeout 60000
 
 # Save results to a specific path
-eval run suite.yaml --output ./ci-results/run.json
+evals run suite.yaml --output ./ci-results/run.json
 ```
 
-### `eval compare <suite.yaml> --models <m1,m2,...>`
+### `evals compare <suite.yaml> --models <m1,m2,...>`
 
 Run the same suite against multiple models and display a side-by-side comparison.
 
 ```bash
-eval compare examples/summarization.yaml \
+evals compare examples/summarization.yaml \
   --models claude-haiku-4-5,claude-sonnet-4-6,claude-opus-4-8
 ```
 
 ```bash
-eval compare examples/summarization.yaml \
+evals compare examples/summarization.yaml \
   --models gpt-4o-mini,gpt-4o \
   --provider openai
 ```
@@ -123,22 +123,22 @@ eval compare examples/summarization.yaml \
 | `--timeout <ms>` | Per-case timeout in milliseconds (default: `30000`) |
 | `--concurrency <n>` | Run N cases in parallel per model (default: `1`) |
 
-### `eval providers`
+### `evals providers`
 
 Show configured providers and their status (API key set, Ollama reachable):
 
 ```bash
-eval providers
+evals providers
 ```
 
-### `eval report`
+### `evals report`
 
 List stored results from the `results/` directory.
 
 ```bash
-eval report             # last 10 results
-eval report --last 5
-eval report --suite summarization
+evals report             # last 10 results
+evals report --last 5
+evals report --suite summarization
 ```
 
 **Options:**
@@ -171,7 +171,7 @@ cases:
 Run it:
 
 ```bash
-eval run my-suite.yaml
+evals run my-suite.yaml
 ```
 
 ## Semantic cache
@@ -195,14 +195,14 @@ If a required key is missing when a command is run, `eval` will print a clear er
 Exit code is `1` when any case fails, `0` when all pass:
 
 ```bash
-eval run my-suite.yaml && echo "All green"
+evals run my-suite.yaml && echo "All green"
 ```
 
 Use `--dry-run` in CI pre-flight to validate config before spending API quota:
 
 ```bash
-eval run my-suite.yaml --dry-run  # validates YAML, exits 0 if valid
-eval run my-suite.yaml            # the real run
+evals run my-suite.yaml --dry-run  # validates YAML, exits 0 if valid
+evals run my-suite.yaml            # the real run
 ```
 
 Results JSON is always written to `./results/` for artifact storage.
