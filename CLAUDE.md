@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a TypeScript/Node.js CLI tool (`eval`) for evaluating LLM outputs against YAML-defined test suites. Think pytest, but for LLM responses.
+This is a TypeScript/Node.js CLI tool (`evals`) for evaluating LLM outputs against YAML-defined test suites. Think pytest, but for LLM responses.
 
 Key directories:
 - `src/` — TypeScript source

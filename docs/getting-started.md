@@ -3,8 +3,8 @@
 ## Installation
 
 ```bash
-git clone https://github.com/ivanx000/LLM-Evaluation-CLI
-cd LLM-Evaluation-CLI
+git clone https://github.com/ivanx000/evals
+cd evals
 npm install
 npm run build
 ```
@@ -26,7 +26,7 @@ evals run examples/ollama-basic.yaml
 
 See [providers.md](./providers.md) for full Ollama setup instructions.
 
-Optionally, install the `eval` binary globally:
+Optionally, install the `evals` binary globally:
 
 ```bash
 npm link
@@ -188,7 +188,7 @@ export ANTHROPIC_API_KEY=sk-ant-...   # required for Anthropic provider and llm_
 export OPENAI_API_KEY=sk-...          # required for OpenAI provider
 ```
 
-If a required key is missing when a command is run, `eval` will print a clear error and exit with code 1 — it never reaches the API call and fails cryptically.
+If a required key is missing when a command is run, `evals` will print a clear error and exit with code 1 — it never reaches the API call and fails cryptically.
 
 ## CI integration
 
