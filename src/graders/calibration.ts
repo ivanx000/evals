@@ -6,9 +6,9 @@ function extractAnswer(text: string): string | null {
   return match ? match[1].trim() : null;
 }
 
-// Extracts the CONFIDENCE value (0-100), clamped to valid range
+// Extracts the CONFIDENCE value, clamped to [0, 100]
 function extractConfidence(text: string): number | null {
-  const match = text.match(/\bCONFIDENCE:\s*(\d+(?:\.\d+)?)/im);
+  const match = text.match(/\bCONFIDENCE:\s*(-?\d+(?:\.\d+)?)/im);
   if (!match) return null;
   return Math.min(100, Math.max(0, parseFloat(match[1])));
 }

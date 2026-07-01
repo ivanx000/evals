@@ -189,13 +189,38 @@ See `docs/dashboard.md` for full reference.
 
 ## Extending the Framework
 
-### Adding a grader
+### Grader plugin architecture
+
+Graders are dispatched through a registry (`src/graders/registry.ts`). At startup, all
+built-in graders are registered with `registerGrader({ type, grade() })`. The `Grader`
+interface lives in `src/graders/types.ts`:
+
+```ts
+interface Grader {
+  readonly type: string;
+  grade(response: string, task: Record<string, unknown>, context?: GraderContext): Promise<GraderResult>;
+}
+```
+
+`runGraders()` in `index.ts` looks up each criterion's type in the registry, falls back
+to user-land plugins (`.js` files in `graders/`), and returns a clear error for truly
+unknown types.
+
+To register a built-in grader programmatically (e.g., in tests):
+```ts
+import { registerGrader } from "./src/graders/registry.js";
+registerGrader({ type: "my_grader", async grade(output, criteria) { ... } });
+```
+
+### Adding a built-in grader
 1. Create `src/graders/<name>.ts` — wrap all logic in try/catch, return
    `{ criteria_type, passed, error }` on failure, never throw
 2. Add Zod schema + type to `src/types.ts` and include in `CriteriaSchema`
-3. Register in `src/graders/index.ts` `runGraders()` switch
-4. Add unit tests in `tests/graders/<name>.test.ts`
-5. Update `docs/graders.md`
+3. Register in `src/graders/registry.ts` with `registerGrader({ type, grade() })`
+4. Add the type string to `BUILTIN_TYPES` in `src/plugins.ts`
+5. Export the grader function from `src/graders/index.ts`
+6. Add unit tests in `tests/graders/<name>.test.ts`
+7. Update `docs/graders.md`
 
 ### Adding a provider
 1. Create `src/providers/<name>.ts` implementing `LLMProvider`

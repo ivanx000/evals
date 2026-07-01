@@ -178,12 +178,145 @@ The grader extracts code from markdown fences automatically:
 `code_execution` runs LLM-generated code on your local machine. Only use it with
 models and prompts you trust, in a context where arbitrary code execution is acceptable.
 
+## numeric_tolerance
+
+Extracts the last numeric value from the model's output and checks whether it is within
+a configurable percentage of a reference value. Use this for financial reasoning, math
+benchmarks, or any task where free-text answers contain a numeric result.
+
+```yaml
+- type: numeric_tolerance
+  value: 14.3          # reference value
+  tolerance_pct: 2     # optional, default 2.0 (percent)
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `value` | number | required | Reference value to compare against |
+| `tolerance_pct` | number | `2.0` | Maximum allowed relative error as a percentage |
+
+### Number extraction
+
+The grader extracts the **last** numeric value it finds in the output, handling:
+- Bare numbers: `14.3`
+- Trailing percent: `14.3%` → `14.3`
+- Leading currency: `$14.3` → `14.3`
+- Comma-formatted: `1,200,000` → `1200000`
+- Free-text context: `"approximately 14.3"` → `14.3`
+- Structured format: `"ANSWER: 14.3 CONFIDENCE: 85"` → `14.3` (CONFIDENCE suffix is stripped)
+
+The pass/fail check uses **relative error**: `|extracted − reference| / |reference|`. For a
+reference of zero, an absolute tolerance of 1 is used instead.
+
+### Example YAML
+
+```yaml
+- id: pe_ratio
+  prompt: "A stock is $42.90 with EPS of $3.00. What is the P/E ratio?"
+  criteria:
+    - type: numeric_tolerance
+      value: 14.3
+      tolerance_pct: 1
+```
+
+---
+
+## calibration
+
+Parses a structured `ANSWER: … CONFIDENCE: …` block from the model output, checks
+whether the extracted answer matches an expected string, and stores the confidence
+value in `GraderResult.metadata` for later Brier score analysis.
+
+Use this grader when you want to measure not just accuracy but also whether the model
+is appropriately confident (calibrated).
+
+```yaml
+- type: calibration
+  expected: "14.3"          # string the extracted answer must equal
+  case_sensitive: false      # optional, default false
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `expected` | string | required | Expected answer string |
+| `case_sensitive` | boolean | `false` | Whether the string comparison is case-sensitive |
+
+### Required output format
+
+The model **must** include both fields in its response:
+
+```
+ANSWER: <answer> CONFIDENCE: <0-100>
+```
+
+The keywords `ANSWER:` and `CONFIDENCE:` are matched case-insensitively and can appear
+anywhere in the output. `CONFIDENCE` must be a number in the range 0–100 (clamped if
+outside that range).
+
+### GraderResult.metadata
+
+The calibration grader always attaches a `metadata` object to its result:
+
+```ts
+{
+  answer: string;        // extracted ANSWER value
+  expected: string;      // expected value from criteria
+  correct: boolean;      // whether answer === expected
+  confidence: number | null;  // extracted CONFIDENCE, or null if absent
+}
+```
+
+Use this to compute a Brier score after a run:
+
+```ts
+const calibrationResults = runResult.cases.flatMap(c =>
+  c.grader_results.filter(r => r.criteria_type === "calibration")
+);
+const brierScore =
+  calibrationResults.reduce((sum, r) => {
+    const p = (r.metadata?.confidence as number ?? 50) / 100;
+    const o = r.metadata?.correct ? 1 : 0;
+    return sum + (p - o) ** 2;
+  }, 0) / calibrationResults.length;
+```
+
+### Example YAML
+
+```yaml
+- id: pe_ratio_calibrated
+  prompt: |
+    A stock is $42.90 with EPS of $3.00. Calculate the P/E ratio.
+    Respond ONLY as: ANSWER: <value> CONFIDENCE: <0-100>
+  criteria:
+    - type: calibration
+      expected: "14.3"
+```
+
+### Combining numeric_tolerance and calibration
+
+Both graders can be applied to the same case. `numeric_tolerance` checks the numeric
+accuracy (with a tolerance band); `calibration` checks the structured ANSWER field and
+records confidence:
+
+```yaml
+criteria:
+  - type: numeric_tolerance
+    value: 14.3
+    tolerance_pct: 2
+  - type: calibration
+    expected: "14.3"
+```
+
+---
+
 ### Adding a built-in grader (core contributors)
 
 1. Create `src/graders/<name>.ts` exporting a `grade<Name>(output, criteria): GraderResult` function
 2. Add the Zod schema to `src/types.ts` and include it in the `CriteriaSchema` discriminated union
-3. Register the grader in `src/graders/index.ts` `runGraders()` switch statement
-4. Update this file with the new grader's documentation
+3. Register the grader in `src/graders/registry.ts` with `registerGrader({ type, async grade() {...} })`
+4. Add the type string to the `BUILTIN_TYPES` set in `src/plugins.ts`
+5. Export the grader function from `src/graders/index.ts`
+6. Update this file with the new grader's documentation
 
 ---
 
@@ -269,7 +402,7 @@ A working example is included at `examples/plugins/sentiment_grader.js`.
 - The framework scans `graders/` in the current working directory at startup
 - Only `.js` and `.mjs` files are loaded; `.ts` files require a pre-compilation step
 - Each file must export a default object with at least `{ type, run }`
-- Plugin type names must not conflict with built-in grader names (`exact_match`, `contains`, `max_words`, `regex`, `llm_judge`)
+- Plugin type names must not conflict with built-in grader names (`exact_match`, `contains`, `max_words`, `regex`, `llm_judge`, `code_execution`, `numeric_tolerance`, `calibration`)
 - Duplicate type names: the first plugin loaded wins (alphabetical file order); a warning is printed for subsequent duplicates
 
 ### Error handling
