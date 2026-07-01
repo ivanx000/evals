@@ -7,7 +7,7 @@ import type { BenchmarkReport } from "../src/benchmark-types.js";
 
 // ─── Mock runSuite so no real API calls are made ──────────────────────────────
 
-const mockRunSuite = vi.fn();
+const mockRunSuite = vi.hoisted(() => vi.fn());
 
 vi.mock("../src/runner.js", () => ({
   runSuite: mockRunSuite,
