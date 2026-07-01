@@ -7,9 +7,10 @@ export const BenchmarkTaskSchema = z.object({
   id: z.string(),
   question: z.string(),
   reference_answer: z.string(),
-  grader: z.enum(["numeric_tolerance", "llm_judge"]),
+  grader: z.enum(["numeric_tolerance", "calibration", "llm_judge"]),
   tolerance_pct: z.number().positive().optional().default(2.0),
   rubric: z.string().optional(),
+  expected: z.string().optional(),
   difficulty: z.enum(["easy", "medium", "hard"]),
   category: z.enum([
     "ratio_analysis",
