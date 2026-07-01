@@ -121,6 +121,7 @@ export type RegexCriteria = z.infer<typeof RegexCriteriaSchema>;
 export type LLMJudgeCriteria = z.infer<typeof LLMJudgeCriteriaSchema>;
 export type CodeExecutionCriteria = z.infer<typeof CodeExecutionCriteriaSchema>;
 export type NumericToleranceCriteria = z.infer<typeof NumericToleranceCriteriaSchema>;
+export type CalibrationCriteria = z.infer<typeof CalibrationCriteriaSchema>;
 export type Criteria = z.infer<typeof CriteriaSchema>;
 
 export type Turn = z.infer<typeof TurnSchema>;
@@ -137,6 +138,7 @@ export interface GraderResult {
   reasoning?: string;  // for llm_judge
   detail?: string;     // human-readable detail for other graders
   error?: string;      // set when grader failed to execute
+  metadata?: Record<string, unknown>;  // grader-specific extra data (e.g. calibration confidence)
 }
 
 // ─── Run result ────────────────────────────────────────────────────────────────

@@ -1,12 +1,19 @@
 import type { Criteria, GraderResult, PluginGrader } from "../types.js";
-import { gradeExactMatch } from "./exact_match.js";
-import { gradeContains } from "./contains.js";
-import { gradeMaxWords } from "./max_words.js";
-import { gradeRegex } from "./regex.js";
-import { gradeLLMJudge } from "./llm_judge.js";
-import { gradeCodeExecution } from "./code_execution.js";
-import { gradeNumericTolerance } from "./numeric_tolerance.js";
+import { getGrader } from "./registry.js";
 import { loadPlugins } from "../plugins.js";
+
+// Re-export individual grader functions for direct use in tests / library consumers
+export { gradeExactMatch } from "./exact_match.js";
+export { gradeContains } from "./contains.js";
+export { gradeMaxWords } from "./max_words.js";
+export { gradeRegex } from "./regex.js";
+export { gradeLLMJudge } from "./llm_judge.js";
+export { gradeCodeExecution } from "./code_execution.js";
+export { gradeNumericTolerance } from "./numeric_tolerance.js";
+export { gradeCalibration } from "./calibration.js";
+
+// Re-export registry utilities so callers can register custom graders programmatically
+export { registerGrader, getGrader, isRegistered, getRegisteredTypes } from "./registry.js";
 
 // Plugins are loaded once per process and cached here
 let pluginCache: Map<string, PluginGrader> | null = null;
@@ -26,52 +33,32 @@ export async function runGraders(
 ): Promise<GraderResult[]> {
   const results: GraderResult[] = [];
   const plugins = await getPlugins();
+  const context = { judgeModel, judgeApiKey };
 
   for (const criteria of criteriaList) {
     try {
-      switch (criteria.type) {
-        case "exact_match":
-          results.push(gradeExactMatch(output, criteria));
-          break;
-        case "contains":
-          results.push(gradeContains(output, criteria));
-          break;
-        case "max_words":
-          results.push(gradeMaxWords(output, criteria));
-          break;
-        case "regex":
-          results.push(gradeRegex(output, criteria));
-          break;
-        case "llm_judge":
-          results.push(await gradeLLMJudge(output, criteria, judgeModel, judgeApiKey));
-          break;
-        case "code_execution":
-          results.push(await gradeCodeExecution(output, criteria));
-          break;
-        case "numeric_tolerance":
-          results.push(gradeNumericTolerance(output, criteria));
-          break;
-        default: {
-          // Try plugin graders
-          const plugin = plugins.get((criteria as { type: string }).type);
-          if (plugin) {
-            try {
-              const result = await plugin.run(output, criteria);
-              results.push(result);
-            } catch (pluginErr) {
-              results.push({
-                criteria_type: (criteria as { type: string }).type,
-                passed: false,
-                error: `Plugin grader "${(criteria as { type: string }).type}" failed: ${(pluginErr as Error).message}`,
-              });
-            }
-          } else {
+      const grader = getGrader(criteria.type);
+      if (grader) {
+        results.push(await grader.grade(output, criteria, context));
+      } else {
+        const plugin = plugins.get((criteria as { type: string }).type);
+        if (plugin) {
+          try {
+            const result = await plugin.run(output, criteria);
+            results.push(result);
+          } catch (pluginErr) {
             results.push({
               criteria_type: (criteria as { type: string }).type,
               passed: false,
-              error: `Unknown grader type: "${(criteria as { type: string }).type}"`,
+              error: `Plugin grader "${(criteria as { type: string }).type}" failed: ${(pluginErr as Error).message}`,
             });
           }
+        } else {
+          results.push({
+            criteria_type: (criteria as { type: string }).type,
+            passed: false,
+            error: `Unknown grader type: "${(criteria as { type: string }).type}". Register it with registerGrader() or add a plugin to the graders/ directory.`,
+          });
         }
       }
     } catch (err) {
@@ -90,11 +77,3 @@ export async function runGraders(
 export function resetPluginCache(): void {
   pluginCache = null;
 }
-
-export { gradeExactMatch } from "./exact_match.js";
-export { gradeContains } from "./contains.js";
-export { gradeMaxWords } from "./max_words.js";
-export { gradeRegex } from "./regex.js";
-export { gradeLLMJudge } from "./llm_judge.js";
-export { gradeCodeExecution } from "./code_execution.js";
-export { gradeNumericTolerance } from "./numeric_tolerance.js";
