@@ -8,6 +8,9 @@ const BUILTIN_TYPES = new Set([
   "max_words",
   "regex",
   "llm_judge",
+  "code_execution",
+  "numeric_tolerance",
+  "calibration",
 ]);
 
 export async function loadPlugins(pluginsDir?: string): Promise<Map<string, PluginGrader>> {

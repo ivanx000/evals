@@ -1,0 +1,78 @@
+name: Financial Reasoning Benchmark
+description: >
+  Tests numeric accuracy and calibration for financial reasoning tasks.
+  Uses numeric_tolerance to check extracted answers against reference values,
+  and calibration to record per-case confidence for Brier score analysis.
+
+model: claude-haiku-4-5
+provider: anthropic
+
+cases:
+  # ── numeric_tolerance examples ────────────────────────────────────────────
+  # These cases accept free-text answers — the grader extracts the last number.
+
+  - id: pe_ratio_basic
+    prompt: >
+      A company has a stock price of $42.90 and earnings per share of $3.00.
+      What is the price-to-earnings (P/E) ratio? Provide only the numeric answer.
+    criteria:
+      - type: numeric_tolerance
+        value: 14.3
+        tolerance_pct: 1
+
+  - id: revenue_growth_pct
+    prompt: >
+      A company's revenue grew from $800M to $920M year-over-year.
+      What is the percentage revenue growth? Provide only the numeric answer.
+    criteria:
+      - type: numeric_tolerance
+        value: 15
+        tolerance_pct: 0.5
+
+  # ── calibration examples ──────────────────────────────────────────────────
+  # These cases require structured output for confidence tracking.
+  # The model must respond: ANSWER: <value> CONFIDENCE: <0-100>
+  # Collect metadata.confidence across cases to compute a Brier score afterward.
+
+  - id: pe_ratio_calibrated
+    prompt: >
+      A company has a stock price of $42.90 and earnings per share of $3.00.
+      Calculate the P/E ratio.
+
+      Respond ONLY in this exact format:
+      ANSWER: <numeric result rounded to one decimal> CONFIDENCE: <your confidence 0-100>
+    criteria:
+      - type: calibration
+        expected: "14.3"
+        case_sensitive: false
+
+  - id: debt_to_equity_calibrated
+    prompt: >
+      A company has total debt of $500M and total equity of $250M.
+      What is the debt-to-equity ratio?
+
+      Respond ONLY in this exact format:
+      ANSWER: <numeric result rounded to one decimal> CONFIDENCE: <your confidence 0-100>
+    criteria:
+      - type: calibration
+        expected: "2.0"
+        case_sensitive: false
+
+  # ── combined: numeric accuracy + calibration on the same case ─────────────
+  # Using both graders lets you check the numeric answer (with tolerance)
+  # AND record the model's self-reported confidence for calibration analysis.
+
+  - id: gross_margin_combined
+    prompt: >
+      A company has revenue of $1,000M and cost of goods sold of $600M.
+      Calculate the gross margin percentage.
+
+      Respond ONLY in this exact format:
+      ANSWER: <percentage as a number, e.g. 40> CONFIDENCE: <your confidence 0-100>
+    criteria:
+      - type: numeric_tolerance
+        value: 40
+        tolerance_pct: 1
+      - type: calibration
+        expected: "40"
+        case_sensitive: false
