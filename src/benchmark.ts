@@ -72,6 +72,7 @@ function taskToEvalCase(task: BenchmarkTask) {
       {
         type: "calibration" as const,
         expected: task.expected ?? task.reference_answer,
+        case_sensitive: false as const,
       },
     ];
   } else {
