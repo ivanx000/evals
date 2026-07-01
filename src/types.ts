@@ -46,6 +46,12 @@ export const NumericToleranceCriteriaSchema = z.object({
   tolerance_pct: z.number().positive().optional().default(2.0),
 });
 
+export const CalibrationCriteriaSchema = z.object({
+  type: z.literal("calibration"),
+  expected: z.string(),
+  case_sensitive: z.boolean().optional().default(false),
+});
+
 export const CriteriaSchema = z.discriminatedUnion("type", [
   ExactMatchCriteriaSchema,
   ContainsCriteriaSchema,
@@ -54,6 +60,7 @@ export const CriteriaSchema = z.discriminatedUnion("type", [
   LLMJudgeCriteriaSchema,
   CodeExecutionCriteriaSchema,
   NumericToleranceCriteriaSchema,
+  CalibrationCriteriaSchema,
 ]);
 
 // ─── Eval suite schema ─────────────────────────────────────────────────────────
