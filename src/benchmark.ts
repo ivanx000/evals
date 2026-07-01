@@ -47,33 +47,42 @@ export function loadBenchmarkSpec(benchmarkDir: string): BenchmarkSpec {
 
 // ─── Convert benchmark tasks → EvalSuite ─────────────────────────────────────
 
-const CONFIDENCE_SUFFIX = `
+const CALIBRATION_FORMAT = `
 
-After your answer, on a new line write exactly:
-CONFIDENCE: [0-100]
-where the number reflects your certainty that your answer is correct (0 = no idea, 100 = certain).`;
+Respond with exactly:
+ANSWER: <your answer>
+CONFIDENCE: <0-100>
+where CONFIDENCE is your certainty that your answer is correct (0 = no idea, 100 = certain).`;
 
-function taskToEvalCase(task: BenchmarkTask, withConfidence: boolean) {
-  const prompt = withConfidence
-    ? task.question.trim() + CONFIDENCE_SUFFIX
-    : task.question.trim();
+function taskToEvalCase(task: BenchmarkTask) {
+  const suffix = task.grader === "calibration" ? CALIBRATION_FORMAT : "";
+  const prompt = task.question.trim() + suffix;
 
-  const criteria =
-    task.grader === "numeric_tolerance"
-      ? [
-          {
-            type: "numeric_tolerance" as const,
-            value: parseFloat(task.reference_answer),
-            tolerance_pct: task.tolerance_pct ?? 2.0,
-          },
-        ]
-      : [
-          {
-            type: "llm_judge" as const,
-            rubric: task.rubric!,
-            pass_threshold: 3 as const,
-          },
-        ];
+  let criteria;
+  if (task.grader === "numeric_tolerance") {
+    criteria = [
+      {
+        type: "numeric_tolerance" as const,
+        value: parseFloat(task.reference_answer),
+        tolerance_pct: task.tolerance_pct ?? 2.0,
+      },
+    ];
+  } else if (task.grader === "calibration") {
+    criteria = [
+      {
+        type: "calibration" as const,
+        expected: task.expected ?? task.reference_answer,
+      },
+    ];
+  } else {
+    criteria = [
+      {
+        type: "llm_judge" as const,
+        rubric: task.rubric!,
+        pass_threshold: 3 as const,
+      },
+    ];
+  }
 
   return {
     id: task.id,
@@ -87,7 +96,6 @@ function buildEvalSuite(
   spec: BenchmarkSpec,
   model: string,
   provider: string,
-  withConfidence: boolean
 ): EvalSuite {
   return {
     name: spec.name,
@@ -98,26 +106,13 @@ function buildEvalSuite(
       "You are a financial analyst with CFA-level knowledge. Answer questions accurately and concisely.",
     max_tokens: 1024,
     temperature: 0,
-    cases: spec.tasks.map((t) => taskToEvalCase(t, withConfidence)),
+    cases: spec.tasks.map((t) => taskToEvalCase(t)),
   };
-}
-
-// ─── Confidence extraction ─────────────────────────────────────────────────────
-
-function extractConfidence(output: string): number | undefined {
-  const match = output.match(/\bCONFIDENCE:\s*(\d+)/i);
-  if (!match) return undefined;
-  const val = parseInt(match[1], 10);
-  return Math.min(100, Math.max(0, val));
-}
-
-function stripConfidenceLine(output: string): string {
-  return output.replace(/\bCONFIDENCE:\s*\d+\s*$/im, "").trim();
 }
 
 // ─── Calibration (Brier score) ────────────────────────────────────────────────
 
-function computeCalibration(
+export function computeCalibration(
   pairs: Array<{ task_id: string; confidence: number; passed: boolean }>
 ): CalibrationResult {
   if (pairs.length < 3) {
@@ -182,7 +177,7 @@ export function findPreviousReport(
   return null;
 }
 
-function computeRegression(
+export function computeRegression(
   prev: BenchmarkReport,
   current: BenchmarkReport,
   threshold: number
@@ -245,8 +240,8 @@ export async function runBenchmark(
   const timestamp = new Date().toISOString();
   const startMs = Date.now();
 
-  const withConfidence = spec.tasks.some((t) => t.grader === "llm_judge");
-  const suite = buildEvalSuite(spec, model, provider, withConfidence);
+  const hasCalibrationTasks = spec.tasks.some((t) => t.grader === "calibration");
+  const suite = buildEvalSuite(spec, model, provider);
 
   const runResult = await runSuite(suite, config, {
     noCache: options.noCache,
@@ -260,16 +255,17 @@ export async function runBenchmark(
   // Build task-level metadata lookup
   const taskMeta = new Map(spec.tasks.map((t) => [t.id, t]));
 
-  // Collect calibration pairs from llm_judge tasks
+  // Collect calibration pairs from calibration grader results
   const calibrationPairs: Array<{ task_id: string; confidence: number; passed: boolean }> = [];
 
   const taskResults: BenchmarkTaskResult[] = runResult.cases.map((c) => {
     const meta = taskMeta.get(c.case_id);
-    const confidence = withConfidence ? extractConfidence(c.output) : undefined;
-    const cleanedAnswer = stripConfidenceLine(c.output);
+    const calibMeta = c.grader_results.find((r) => r.criteria_type === "calibration")?.metadata;
+    const confidence = typeof calibMeta?.confidence === "number" ? calibMeta.confidence : undefined;
+    const correct = typeof calibMeta?.correct === "boolean" ? calibMeta.correct : undefined;
 
-    if (confidence !== undefined) {
-      calibrationPairs.push({ task_id: c.case_id, confidence, passed: c.passed });
+    if (confidence !== undefined && correct !== undefined) {
+      calibrationPairs.push({ task_id: c.case_id, confidence, passed: correct });
     }
 
     return {
@@ -277,7 +273,7 @@ export async function runBenchmark(
       category: meta?.category ?? "unknown",
       difficulty: meta?.difficulty ?? "unknown",
       question: meta?.question.trim() ?? c.prompt,
-      model_answer: cleanedAnswer,
+      model_answer: c.output,
       reference_answer: meta?.reference_answer ?? "",
       grader_type: meta?.grader ?? "unknown",
       passed: c.passed,
@@ -312,7 +308,7 @@ export async function runBenchmark(
       ? Math.round(taskResults.reduce((s, t) => s + t.latency_ms, 0) / taskResults.length)
       : 0;
   const estimated_cost_usd = runResult.total_cost_usd;
-  const calibration = withConfidence ? computeCalibration(calibrationPairs) : null;
+  const calibration = hasCalibrationTasks ? computeCalibration(calibrationPairs) : null;
   const duration_ms = Date.now() - startMs;
 
   const report: BenchmarkReport = {
