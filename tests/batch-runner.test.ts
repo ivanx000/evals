@@ -153,7 +153,7 @@ describe("runSuiteBatch", () => {
       ])
     );
 
-    await runSuiteBatch(suite, config);
+    await runSuiteBatch(suite, config, OPTS);
 
     expect(mockBatchPoll).toHaveBeenCalledTimes(2);
     expect(mockBatchPoll).toHaveBeenCalledWith("batch-abc123");
@@ -171,7 +171,7 @@ describe("runSuiteBatch", () => {
       ])
     );
 
-    const result = await runSuiteBatch(suite, config);
+    const result = await runSuiteBatch(suite, config, OPTS);
 
     expect(result.cases).toHaveLength(2);
     expect(result.cases[0].case_id).toBe("case-1");
@@ -191,7 +191,7 @@ describe("runSuiteBatch", () => {
       ])
     );
 
-    const result = await runSuiteBatch(suite, config);
+    const result = await runSuiteBatch(suite, config, OPTS);
 
     expect(result.total).toBe(2);
     expect(result.passed).toBe(1);
@@ -213,7 +213,7 @@ describe("runSuiteBatch", () => {
       ])
     );
 
-    const result = await runSuiteBatch(suite, config);
+    const result = await runSuiteBatch(suite, config, OPTS);
 
     expect(result.batch_id).toBe("batch-abc123");
     expect(typeof result.batch_cost_usd).toBe("number");
