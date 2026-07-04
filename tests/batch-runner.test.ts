@@ -102,6 +102,8 @@ async function* asyncIterableFrom<T>(items: T[]): AsyncIterable<T> {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("runSuiteBatch", () => {
+  const OPTS = { _pollDelayMs: 0 };
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockBatchSubmit.mockResolvedValue("batch-abc123");
@@ -120,7 +122,7 @@ describe("runSuiteBatch", () => {
       ])
     );
 
-    const result = await runSuiteBatch(suite, config);
+    const result = await runSuiteBatch(suite, config, OPTS);
 
     expect(mockBatchSubmit).toHaveBeenCalledOnce();
     const [requests] = mockBatchSubmit.mock.calls[0];

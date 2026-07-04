@@ -129,12 +129,12 @@ export async function runSuiteBatch(
   const batchStart = Date.now();
 
   // Poll with exponential backoff until processing_status === "ended"
-  let delay = 5_000;
+  let delay = options._pollDelayMs ?? 5_000;
   while (true) {
     await new Promise<void>((resolve) => setTimeout(resolve, delay));
     const batch = await anthropicProvider.batchPoll(batchId);
     if (batch.processing_status === "ended") break;
-    delay = Math.min(delay * 2, 60_000);
+    delay = Math.min(delay * 2, options._pollDelayMs ?? 60_000);
   }
 
   const batchWallClock = Date.now() - batchStart;
