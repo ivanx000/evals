@@ -1,4 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
+import type {
+  MessageBatch,
+  MessageBatchIndividualResponse,
+} from "@anthropic-ai/sdk/resources/messages/batches.js";
 import type { LLMProvider, ProviderCallOptions, ProviderResponse } from "../types.js";
 import { ANTHROPIC_PRICING } from "../types.js";
 import { withRetry } from "./retry.js";
@@ -74,5 +78,20 @@ export class AnthropicProvider implements LLMProvider {
       : undefined;
 
     return { output, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd };
+  }
+
+  async batchSubmit(
+    requests: Array<{ custom_id: string; params: Anthropic.MessageCreateParamsNonStreaming }>
+  ): Promise<string> {
+    const batch = await this.client.messages.batches.create({ requests });
+    return batch.id;
+  }
+
+  async batchPoll(batchId: string): Promise<MessageBatch> {
+    return this.client.messages.batches.retrieve(batchId);
+  }
+
+  async batchResults(batchId: string): Promise<AsyncIterable<MessageBatchIndividualResponse>> {
+    return this.client.messages.batches.results(batchId);
   }
 }

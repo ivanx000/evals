@@ -30,6 +30,7 @@ export interface RunOptions {
   concurrency?: number;
   filter?: string;
   datasetOverride?: string;
+  batch?: boolean;
   onCaseResult?: (result: CaseResult, index: number, total: number) => void;
 }
 
