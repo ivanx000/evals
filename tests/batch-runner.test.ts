@@ -253,7 +253,7 @@ describe("runSuiteBatch", () => {
     // batchSubmit should be called with zero requests (the case was filtered out)
     mockBatchResults.mockResolvedValue(asyncIterableFrom([]));
 
-    const result = await runSuiteBatch(suite, config);
+    const result = await runSuiteBatch(suite, config, OPTS);
 
     expect(result.cases[0].passed).toBe(false);
     expect(result.cases[0].error).toMatch(/--batch does not support multi-turn/);
@@ -270,7 +270,7 @@ describe("runSuiteBatch", () => {
       asyncIterableFrom([makeSucceededResult("0", "4")])
     );
 
-    const result = await runSuiteBatch(suite, config, { filter: "case-1" });
+    const result = await runSuiteBatch(suite, config, { ...OPTS, filter: "case-1" });
 
     expect(result.total).toBe(1);
     expect(result.cases[0].case_id).toBe("case-1");
@@ -289,7 +289,7 @@ describe("runSuiteBatch", () => {
       asyncIterableFrom([makeSucceededResult("0", "4"), makeSucceededResult("1", "Paris")])
     );
 
-    const result = await runSuiteBatch(suite, config);
+    const result = await runSuiteBatch(suite, config, OPTS);
 
     const expectedCostPerCase = ((10 * 1.0 + 5 * 5.0) / 1_000_000) * 0.5;
     expect(result.batch_cost_usd).toBeCloseTo(expectedCostPerCase * 2, 10);
