@@ -31,6 +31,7 @@ export interface RunOptions {
   filter?: string;
   datasetOverride?: string;
   batch?: boolean;
+  _pollDelayMs?: number;
   onCaseResult?: (result: CaseResult, index: number, total: number) => void;
 }
 

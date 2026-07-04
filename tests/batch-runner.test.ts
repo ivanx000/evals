@@ -28,7 +28,10 @@ vi.mock("../src/dataset.js", () => ({
 }));
 
 import { runSuiteBatch } from "../src/batch-runner.js";
+import { runGraders } from "../src/graders/index.js";
 import type { EvalSuite, EvalConfig } from "../src/types.js";
+
+const mockRunGraders = vi.mocked(runGraders);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
