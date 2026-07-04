@@ -18,6 +18,7 @@ import {
   listResults,
   loadResult,
 } from "./runner.js";
+import { runSuiteBatch } from "./batch-runner.js";
 import {
   printRunResult,
   printCompareResult,
@@ -117,6 +118,7 @@ program
   .option("--timeout <ms>", "Per-case timeout in milliseconds (default: 30000)", "30000")
   .option("--concurrency <n>", "Run N cases in parallel (default: 1)", "1")
   .option("--dry-run", "Validate YAML and print what would run, without calling any API")
+  .option("--batch", "Submit all cases to the Anthropic Batches API (50% cost, async, Anthropic-only)")
   .option("-c, --config <path>", "Path to .evalrc.json config file")
   .action(async (suitePath: string, opts: {
     model?: string;
@@ -130,6 +132,7 @@ program
     timeout: string;
     concurrency: string;
     dryRun?: boolean;
+    batch?: boolean;
     config?: string;
   }) => {
     const config = loadConfig(opts.config);
@@ -173,20 +176,41 @@ program
 
         checkApiKeys(suite, config);
 
+        if (opts.batch) {
+          const effectiveProvider =
+            suite.provider ?? config.default_provider ?? "anthropic";
+          if (effectiveProvider !== "anthropic") {
+            console.error(
+              `Error: --batch requires the Anthropic provider, but suite uses "${effectiveProvider}".`
+            );
+            console.error(`  Remove --batch or set provider to "anthropic".`);
+            process.exitCode = 1;
+            return;
+          }
+        }
+
         const datasetLabel = opts.dataset ?? suite.dataset;
         const caseCountLabel = datasetLabel ? `templates → dataset: ${datasetLabel}` : `${suite.cases.length} cases`;
-        console.log(`\nRunning suite: ${suite.name} (${caseCountLabel})`);
+        const modeLabel = opts.batch ? " [batch mode]" : "";
+        console.log(`\nRunning suite: ${suite.name} (${caseCountLabel})${modeLabel}`);
 
-        const result = await runSuite(suite, config, {
-          model: opts.model,
-          noCache: !opts.cache,
-          verbose: opts.verbose,
-          timeout: parseInt(opts.timeout, 10),
-          concurrency: parseInt(opts.concurrency, 10),
-          filter: opts.filter,
-          datasetOverride: opts.dataset,
-          onCaseResult: printCaseProgress,
-        });
+        const result = opts.batch
+          ? await runSuiteBatch(suite, config, {
+              model: opts.model,
+              filter: opts.filter,
+              datasetOverride: opts.dataset,
+              onCaseResult: printCaseProgress,
+            })
+          : await runSuite(suite, config, {
+              model: opts.model,
+              noCache: !opts.cache,
+              verbose: opts.verbose,
+              timeout: parseInt(opts.timeout, 10),
+              concurrency: parseInt(opts.concurrency, 10),
+              filter: opts.filter,
+              datasetOverride: opts.dataset,
+              onCaseResult: printCaseProgress,
+            });
 
         printRunResult(result, opts.verbose);
 
