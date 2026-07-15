@@ -133,6 +133,15 @@ export function printRunResult(result: RunResult, verbose = false): void {
     ` — avg latency: ${ms(avgLatency)}` +
     ` — est. cost: ${usd(result.total_cost_usd)}`
   );
+
+  if (result.batch_id) {
+    const batchCost = result.batch_cost_usd !== undefined ? usd(result.batch_cost_usd) : "—";
+    console.log(
+      `${DIM}Batch ID:${RESET} ${result.batch_id}  ` +
+      `${DIM}Batch cost:${RESET} ${batchCost} ${DIM}(50% discount applied)${RESET}`
+    );
+  }
+
   console.log("");
 }
 
