@@ -38,6 +38,8 @@ export interface RunResult {
   total_cost_usd: number;
   total_latency_ms: number;
   cases: CaseResult[];
+  batch_id?: string;
+  batch_cost_usd?: number;
 }
 
 // Summary shape returned by GET /api/runs

@@ -80,6 +80,7 @@ evals run examples/summarization.yaml
 | `--concurrency <n>` | Run N cases in parallel (default: `1`) |
 | `--dry-run` | Validate the YAML and print what would run — no API calls made |
 | `-c, --config <path>` | Use a specific config file |
+| `--batch` | Submit via Anthropic Batch API (50% cost reduction; Anthropic provider only; results arrive asynchronously) |
 
 **Examples:**
 
@@ -95,6 +96,9 @@ evals run suite.yaml --concurrency 4 --timeout 60000
 
 # Save results to a specific path
 evals run suite.yaml --output ./ci-results/run.json
+
+# Submit to Anthropic Batch API for 50% cost savings (polls until complete)
+evals run suite.yaml --batch
 ```
 
 ### `evals compare <suite.yaml> --models <m1,m2,...>`

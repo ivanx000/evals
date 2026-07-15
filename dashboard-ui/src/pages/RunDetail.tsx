@@ -70,7 +70,14 @@ export function RunDetail() {
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-5">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-lg font-semibold text-gray-100">{run.suite_name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold text-gray-100">{run.suite_name}</h1>
+              {run.batch_id && (
+                <span className="px-2 py-0.5 text-xs font-medium bg-purple-900/60 text-purple-300 border border-purple-700 rounded-full">
+                  Batch
+                </span>
+              )}
+            </div>
             <div className="text-sm text-gray-500 mt-0.5">
               {new Date(run.timestamp).toLocaleString()} · {run.model} ({run.provider})
             </div>
@@ -82,6 +89,21 @@ export function RunDetail() {
             Compare
           </Link>
         </div>
+        {run.batch_id && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 border-t border-gray-700 pt-3">
+            <span>
+              <span className="text-gray-400 font-medium">Batch ID:</span>{" "}
+              <span className="font-mono">{run.batch_id}</span>
+            </span>
+            {run.batch_cost_usd !== undefined && (
+              <span>
+                <span className="text-gray-400 font-medium">Batch cost:</span>{" "}
+                <span className="font-mono">${run.batch_cost_usd.toFixed(4)}</span>
+                <span className="ml-1 text-purple-400">(50% discount applied)</span>
+              </span>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
           <div>
             <div className="text-xs text-gray-500 uppercase tracking-wide">Pass rate</div>
