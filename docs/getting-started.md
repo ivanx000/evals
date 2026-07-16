@@ -212,6 +212,55 @@ Run it:
 evals run my-suite.yaml
 ```
 
+## Suite inheritance
+
+A suite can inherit from a base suite using the `extends` field:
+
+```yaml
+# base.yaml
+name: "Base Suite"
+provider: anthropic
+model: claude-haiku-4-5
+max_tokens: 512
+system_prompt: "You are a helpful assistant."
+
+cases:
+  - id: "smoke-1"
+    prompt: "Say hello."
+    criteria:
+      - type: contains
+        value: "hello"
+```
+
+```yaml
+# full.yaml
+name: "Full Suite"
+extends: ./base.yaml      # path relative to this file
+model: claude-sonnet-4-6  # override the base model
+
+cases:
+  - id: "extra-1"
+    prompt: "Summarize the French Revolution in one sentence."
+    criteria:
+      - type: max_words
+        value: 30
+```
+
+Running `evals run full.yaml` will:
+
+1. Load `base.yaml` and then `full.yaml`
+2. Merge top-level fields — child wins on any conflict
+3. Prepend base cases before child cases (smoke-1, then extra-1)
+4. Validate and run the merged suite
+
+**Rules:**
+
+- `extends` is resolved relative to the file that declares it
+- Any top-level field in the child (e.g. `model`, `temperature`) overrides the base value
+- Base cases always come first; child cases are appended
+- Multi-level inheritance is supported (`grandchild → child → base`)
+- A circular chain (`a → b → a`) throws an error immediately with the cycle shown
+
 ## Semantic cache
 
 All `(model, prompt, system_prompt, temperature, max_tokens)` tuples are cached in `.eval-cache/`.

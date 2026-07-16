@@ -37,26 +37,73 @@ export interface RunOptions {
 
 // ─── Suite loading ─────────────────────────────────────────────────────────────
 
-export function loadSuite(suitePath: string): EvalSuite {
+function readYamlFile(filePath: string): unknown {
   let raw: string;
   try {
-    raw = fs.readFileSync(suitePath, "utf-8");
+    raw = fs.readFileSync(filePath, "utf-8");
   } catch {
     throw new Error(
-      `Cannot read suite file: ${suitePath}\n  Check the file exists and is readable.`
+      `Cannot read suite file: ${filePath}\n  Check the file exists and is readable.`
     );
   }
-
-  let parsed: unknown;
   try {
-    parsed = yaml.load(raw);
+    return yaml.load(raw);
   } catch (err) {
     throw new Error(
-      `Invalid YAML in ${path.basename(suitePath)}: ${(err as Error).message}`
+      `Invalid YAML in ${path.basename(filePath)}: ${(err as Error).message}`
     );
   }
+}
 
-  const result = EvalSuiteSchema.safeParse(parsed);
+function mergeSuiteRaw(
+  base: Record<string, unknown>,
+  child: Record<string, unknown>
+): Record<string, unknown> {
+  const { cases: baseCases = [] } = base;
+  const { cases: childCases = [], extends: _ext, ...childFields } = child;
+  const { extends: _baseExt, ...baseFields } = base;
+  return {
+    ...baseFields,
+    ...childFields,
+    cases: [...(baseCases as unknown[]), ...(childCases as unknown[])],
+  };
+}
+
+// Resolves a suite file and all its ancestors into one merged raw object.
+// `ancestors` tracks the absolute paths of files currently on the call stack
+// to detect cycles.
+function loadRawSuite(
+  absPath: string,
+  ancestors: Set<string>
+): Record<string, unknown> {
+  if (ancestors.has(absPath)) {
+    const chain = [...ancestors, absPath].map((p) => path.basename(p)).join(" → ");
+    throw new Error(`Circular suite inheritance detected: ${chain}`);
+  }
+
+  const parsed = readYamlFile(absPath);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`Suite file is not a YAML mapping: ${path.basename(absPath)}`);
+  }
+
+  const raw = parsed as Record<string, unknown>;
+
+  if (typeof raw.extends !== "string") {
+    return raw;
+  }
+
+  const basePath = path.resolve(path.dirname(absPath), raw.extends);
+  const next = new Set(ancestors).add(absPath);
+  const baseRaw = loadRawSuite(basePath, next);
+
+  return mergeSuiteRaw(baseRaw, raw);
+}
+
+export function loadSuite(suitePath: string): EvalSuite {
+  const absPath = path.resolve(suitePath);
+  const merged = loadRawSuite(absPath, new Set());
+
+  const result = EvalSuiteSchema.safeParse(merged);
   if (!result.success) {
     const issues = result.error.issues
       .map((issue) => `  • ${issue.path.join(".") || "(root)"}: ${issue.message}`)
