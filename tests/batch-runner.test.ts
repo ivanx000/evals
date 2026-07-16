@@ -27,7 +27,7 @@ vi.mock("../src/dataset.js", () => ({
   expandDataset: vi.fn().mockImplementation((cases) => cases),
 }));
 
-import { runSuiteBatch } from "../src/batch-runner.js";
+import { runSuiteBatch, resumeBatch } from "../src/batch-runner.js";
 import { runGraders } from "../src/graders/index.js";
 import type { EvalSuite, EvalConfig } from "../src/types.js";
 
@@ -293,5 +293,144 @@ describe("runSuiteBatch", () => {
 
     const expectedCostPerCase = ((10 * 1.0 + 5 * 5.0) / 1_000_000) * 0.5;
     expect(result.batch_cost_usd).toBeCloseTo(expectedCostPerCase * 2, 10);
+  });
+});
+
+// ─── resumeBatch tests ────────────────────────────────────────────────────────
+
+describe("resumeBatch", () => {
+  const OPTS = { _pollDelayMs: 0 };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockBatchPoll.mockResolvedValue({ processing_status: "ended" });
+    mockRunGraders.mockResolvedValue([{ criteria_type: "contains", passed: true }]);
+  });
+
+  it("polls to completion and returns results without submitting a new batch", async () => {
+    const suite = makeSuite();
+    const config = makeConfig();
+
+    mockBatchResults.mockResolvedValue(
+      asyncIterableFrom([
+        makeSucceededResult("0", "The answer is 4"),
+        makeSucceededResult("1", "Paris is the capital of France"),
+      ])
+    );
+
+    const result = await resumeBatch("batch-existing-123", suite, config, OPTS);
+
+    expect(mockBatchSubmit).not.toHaveBeenCalled();
+    expect(mockBatchPoll).toHaveBeenCalledWith("batch-existing-123");
+    expect(result.batch_id).toBe("batch-existing-123");
+    expect(result.total).toBe(2);
+    expect(result.passed).toBe(2);
+    expect(result.cases[0].output).toBe("The answer is 4");
+    expect(result.cases[1].output).toBe("Paris is the capital of France");
+  });
+
+  it("polls multiple times until processing_status is ended", async () => {
+    const suite = makeSuite();
+    const config = makeConfig();
+
+    mockBatchPoll
+      .mockResolvedValueOnce({ processing_status: "in_progress" })
+      .mockResolvedValueOnce({ processing_status: "in_progress" })
+      .mockResolvedValueOnce({ processing_status: "ended" });
+
+    mockBatchResults.mockResolvedValue(
+      asyncIterableFrom([
+        makeSucceededResult("0", "4"),
+        makeSucceededResult("1", "Paris"),
+      ])
+    );
+
+    await resumeBatch("batch-existing-123", suite, config, OPTS);
+
+    expect(mockBatchPoll).toHaveBeenCalledTimes(3);
+  });
+
+  it("preserves case ordering when batch results arrive out of order", async () => {
+    const suite = makeSuite();
+    const config = makeConfig();
+
+    mockBatchResults.mockResolvedValue(
+      asyncIterableFrom([
+        makeSucceededResult("1", "Paris"),
+        makeSucceededResult("0", "The answer is 4"),
+      ])
+    );
+
+    const result = await resumeBatch("batch-existing-123", suite, config, OPTS);
+
+    expect(result.cases[0].case_id).toBe("case-1");
+    expect(result.cases[0].output).toBe("The answer is 4");
+    expect(result.cases[1].case_id).toBe("case-2");
+    expect(result.cases[1].output).toBe("Paris");
+  });
+
+  it("marks errored batch items as failed with the error message", async () => {
+    const suite = makeSuite();
+    const config = makeConfig();
+
+    mockBatchResults.mockResolvedValue(
+      asyncIterableFrom([
+        makeSucceededResult("0", "4"),
+        makeErroredResult("1", "Model overloaded"),
+      ])
+    );
+
+    const result = await resumeBatch("batch-existing-123", suite, config, OPTS);
+
+    expect(result.failed).toBe(1);
+    expect(result.cases[1].passed).toBe(false);
+    expect(result.cases[1].error).toBe("Model overloaded");
+    expect(result.cases[1].output).toBe("");
+  });
+
+  it("applies the filter option to match what was originally submitted", async () => {
+    const suite = makeSuite();
+    const config = makeConfig();
+
+    mockBatchResults.mockResolvedValue(
+      asyncIterableFrom([makeSucceededResult("0", "4")])
+    );
+
+    const result = await resumeBatch("batch-existing-123", suite, config, {
+      ...OPTS,
+      filter: "case-1",
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.cases[0].case_id).toBe("case-1");
+  });
+
+  it("throws a clear error when provider is not anthropic", async () => {
+    const suite = makeSuite({ provider: "openai" });
+    const config = makeConfig();
+
+    await expect(resumeBatch("batch-existing-123", suite, config)).rejects.toThrow(
+      /resumeBatch only supports the Anthropic provider/
+    );
+
+    expect(mockBatchPoll).not.toHaveBeenCalled();
+  });
+
+  it("includes batch_id and batch_cost_usd in the result", async () => {
+    const suite = makeSuite({ model: "claude-haiku-4-5" });
+    const config = makeConfig();
+
+    mockBatchResults.mockResolvedValue(
+      asyncIterableFrom([
+        makeSucceededResult("0", "4"),
+        makeSucceededResult("1", "Paris"),
+      ])
+    );
+
+    const result = await resumeBatch("batch-existing-123", suite, config, OPTS);
+
+    expect(result.batch_id).toBe("batch-existing-123");
+    expect(typeof result.batch_cost_usd).toBe("number");
+    expect(result.batch_cost_usd).toBeGreaterThan(0);
   });
 });

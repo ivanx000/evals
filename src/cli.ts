@@ -18,7 +18,7 @@ import {
   listResults,
   loadResult,
 } from "./runner.js";
-import { runSuiteBatch } from "./batch-runner.js";
+import { runSuiteBatch, resumeBatch } from "./batch-runner.js";
 import {
   printRunResult,
   printCompareResult,
@@ -589,6 +589,68 @@ benchmarkCmd
     const reportDir = path.resolve(opts.reportDir);
     const reports = listBenchmarkReports(reportDir, opts.benchmark);
     printBenchmarkList(reports);
+  });
+
+// ── eval batch ────────────────────────────────────────────────────────────────
+
+program
+  .command("batch <batchId> <suite>")
+  .description("Re-attach to an in-progress or completed Anthropic batch and save results")
+  .option("-m, --model <model>", "Model used when the batch was submitted (for cost calculation)")
+  .option("--filter <substring>", "Same filter used when batch was submitted (if any)")
+  .option("--dataset <path>", "Same dataset override used when batch was submitted (if any)")
+  .option("-o, --output <path>", "Override the results save path (default: ./results/<timestamp>.json)")
+  .option("-v, --verbose", "Show full outputs and judge reasoning")
+  .option("-c, --config <path>", "Path to .evalrc.json config file")
+  .action(async (batchId: string, suitePath: string, opts: {
+    model?: string;
+    filter?: string;
+    dataset?: string;
+    output?: string;
+    verbose?: boolean;
+    config?: string;
+  }) => {
+    const config = loadConfig(opts.config);
+
+    if (!config.anthropic_api_key) {
+      console.error("Error: ANTHROPIC_API_KEY is required for batch resume.");
+      console.error("  Set it with:           export ANTHROPIC_API_KEY=sk-ant-...");
+      console.error("  Or add to .evalrc.json: { \"anthropic_api_key\": \"sk-ant-...\" }");
+      process.exitCode = 1;
+      return;
+    }
+
+    try {
+      const suite = loadSuite(path.resolve(suitePath));
+
+      console.log(`\nResuming batch: ${batchId}`);
+      console.log(`Suite: ${suite.name}`);
+      if (opts.filter) console.log(`Filter: "${opts.filter}"`);
+
+      const result = await resumeBatch(batchId, suite, config, {
+        model: opts.model,
+        filter: opts.filter,
+        datasetOverride: opts.dataset,
+        onCaseResult: printCaseProgress,
+      });
+
+      printRunResult(result, opts.verbose);
+
+      if (opts.output) {
+        const dir = path.dirname(path.resolve(opts.output));
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(opts.output, JSON.stringify(result, null, 2));
+        console.log(`Results saved → ${opts.output}`);
+      } else {
+        const savedPath = saveResult(result, config.results_dir ?? "./results");
+        console.log(`Results saved → ${savedPath}`);
+      }
+
+      if (result.failed > 0) process.exitCode = 1;
+    } catch (err) {
+      console.error(`\nError: ${(err as Error).message}`);
+      process.exitCode = 1;
+    }
   });
 
 program.parse(process.argv);
