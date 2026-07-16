@@ -138,7 +138,15 @@ Multi-turn cases with intermediate null assistant turns (which require mid-run A
 calls) are not batchable — those cases are returned as `passed: false` with a
 descriptive error.
 
-Polling uses exponential backoff starting at 5 s, doubling each cycle, capped at 60 s.
+Polling and result collection are handled by the private `_pollAndGrade()` helper,
+shared between the submit path and the resume path. It polls with exponential
+backoff starting at 5 s, doubling each cycle, capped at 60 s, then streams
+batch results via `batchResults()` and runs graders in order.
+
+`resumeBatch()` (exposed as `evals batch <batchId> <suite>`) re-expands and
+re-filters the suite identically to the original submit — so that `custom_id`
+indices still map to the correct cases — then calls `_pollAndGrade()` directly
+on the existing batch ID without re-submitting any requests.
 
 ## Grader registry
 

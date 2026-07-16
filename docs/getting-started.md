@@ -244,3 +244,9 @@ evals run my-suite.yaml            # the real run
 ```
 
 Results JSON is always written to `./results/` for artifact storage.
+
+### GitHub Actions
+
+A ready-made workflow is available at [.github/workflows/eval.yml](../.github/workflows/eval.yml). It runs `evals run` on every push and pull request, caches `node_modules`, and fails the check if any case fails.
+
+To use it, add your API key as a repository secret (`ANTHROPIC_API_KEY`) and update the `SUITE` env var in the workflow to point at your suite file.

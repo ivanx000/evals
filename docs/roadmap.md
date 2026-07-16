@@ -23,10 +23,13 @@
 - **Regression detection** — `evals diff <baseline> <candidate>`; per-grader comparison; exit code 1 on regression; `--format json`; Regressions tab in dashboard
 - **Custom grader plugins** — auto-discovery from `graders/` folder; `.js`/`.mjs` files; conflict detection; graceful failure isolation
 
-## Phase 4 — Future Ideas
+## Phase 4 — Production Hardening ✅ (partial)
+- **Batch API support** — `evals run --batch` submits all cases to Anthropic Batches API (50% cost reduction, async); polls with exponential backoff until complete
+- **Batch resume** — `evals batch <batchId> <suite>` re-attaches to an in-progress or completed batch; recovers from interrupted runs without re-submitting
+- **GitHub Actions integration** — `.github/workflows/eval.yml` runs `evals run` on every push/PR; fails the check on any case failure; caches `node_modules`
+
+## Future Ideas
 - Streaming output support
-- Batch API support for cost savings
 - Fine-grained retry budgets per case
 - Remote result storage (S3, GCS)
-- GitHub Actions integration example
 - YAML templating / suite inheritance
