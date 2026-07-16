@@ -101,6 +101,40 @@ evals run suite.yaml --output ./ci-results/run.json
 evals run suite.yaml --batch
 ```
 
+### `evals batch <batchId> <suite.yaml>`
+
+Re-attach to an in-progress or completed Anthropic batch and collect results. Use this when a `--batch` run was interrupted (process killed, network dropped) before polling finished, or when you want to pick up a batch submitted in a previous session.
+
+```bash
+evals batch msgbatch_01abc123 examples/summarization.yaml
+```
+
+**You must pass the same `--filter` and `--dataset` flags that were used at submit time.** The command re-expands and re-filters the suite in the same way, so that batch result indices map back to the correct cases.
+
+**Options:**
+
+| Flag | Description |
+|---|---|
+| `-m, --model <id>` | Model used when the batch was submitted (used for cost calculation) |
+| `--filter <substring>` | Same filter used at submit time (if any) |
+| `--dataset <path>` | Same dataset override used at submit time (if any) |
+| `-o, --output <path>` | Override the results save path (default: `./results/<timestamp>.json`) |
+| `-v, --verbose` | Show full outputs and judge reasoning |
+| `-c, --config <path>` | Use a specific config file |
+
+**Example — interrupted batch recovery:**
+
+```bash
+# Original submit (process was killed before it finished polling)
+evals run suite.yaml --batch --filter smoke --model claude-haiku-4-5
+# Anthropic printed: Batch submitted: msgbatch_01abc123
+
+# Resume — pass the same --filter and --model
+evals batch msgbatch_01abc123 suite.yaml --filter smoke --model claude-haiku-4-5
+```
+
+Requires `ANTHROPIC_API_KEY`. If the batch is still processing, `evals batch` polls with exponential backoff (5 s → 60 s max) until it completes.
+
 ### `evals compare <suite.yaml> --models <m1,m2,...>`
 
 Run the same suite against multiple models and display a side-by-side comparison.
