@@ -28,8 +28,11 @@
 - **Batch resume** — `evals batch <batchId> <suite>` re-attaches to an in-progress or completed batch; recovers from interrupted runs without re-submitting
 - **GitHub Actions integration** — `.github/workflows/eval.yml` runs `evals run` on every push/PR; fails the check on any case failure; caches `node_modules`
 
+## Phase 4 additions ✅
+- **YAML suite inheritance** — `extends: ./base.yaml` in a child suite inherits top-level fields (child overrides) and prepends base cases before child cases; circular chains throw immediately
+
 ## Future Ideas
 - Streaming output support
 - Fine-grained retry budgets per case
 - Remote result storage (S3, GCS)
-- YAML templating / suite inheritance
+- YAML templating
