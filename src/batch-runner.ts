@@ -64,24 +64,10 @@ function buildBatchRequest(
   return { error: "Case has neither prompt nor turns" };
 }
 
-export async function runSuiteBatch(
+async function _expandAndFilter(
   suite: EvalSuite,
-  config: EvalConfig,
-  options: RunOptions = {}
-): Promise<RunResult> {
-  const model =
-    options.model ?? suite.model ?? config.default_model ?? "claude-opus-4-8";
-  const provider =
-    options.providerOverride ?? suite.provider ?? config.default_provider ?? "anthropic";
-
-  if (provider !== "anthropic") {
-    throw new Error(
-      `--batch is only supported for the Anthropic provider, but suite uses "${provider}".\n` +
-        `  Remove --batch or set provider to "anthropic".`
-    );
-  }
-
-  // Expand dataset
+  options: RunOptions
+): Promise<EvalCase[]> {
   const datasetPath = options.datasetOverride ?? suite.dataset;
   let resolvedCases = suite.cases;
   if (datasetPath) {
@@ -96,8 +82,7 @@ export async function runSuiteBatch(
     );
   }
 
-  // Apply filter
-  const filteredCases = options.filter
+  return options.filter
     ? resolvedCases.filter((c) => {
         const f = options.filter!.toLowerCase();
         return (
@@ -106,29 +91,23 @@ export async function runSuiteBatch(
         );
       })
     : resolvedCases;
+}
 
-  const runId = randomUUID();
-  const timestamp = new Date().toISOString();
-
-  // Build batch requests, recording which indices failed at build time
-  const batchRequests: BatchRequest[] = [];
-  const buildErrors = new Map<number, string>();
-
-  for (let i = 0; i < filteredCases.length; i++) {
-    const req = buildBatchRequest(filteredCases[i], suite, model, i);
-    if ("error" in req) {
-      buildErrors.set(i, req.error);
-    } else {
-      batchRequests.push(req);
-    }
-  }
-
-  const anthropicProvider = new AnthropicProvider(config.anthropic_api_key);
-
-  const batchId = await anthropicProvider.batchSubmit(batchRequests);
+async function _pollAndGrade(
+  batchId: string,
+  filteredCases: EvalCase[],
+  buildErrors: Map<number, string>,
+  suite: EvalSuite,
+  config: EvalConfig,
+  model: string,
+  provider: string,
+  anthropicProvider: AnthropicProvider,
+  runId: string,
+  timestamp: string,
+  options: RunOptions
+): Promise<RunResult> {
   const batchStart = Date.now();
 
-  // Poll with exponential backoff until processing_status === "ended"
   let delay = options._pollDelayMs ?? 5_000;
   while (true) {
     await new Promise<void>((resolve) => setTimeout(resolve, delay));
@@ -256,4 +235,94 @@ export async function runSuiteBatch(
     batch_id: batchId,
     batch_cost_usd: totalBatchCost,
   };
+}
+
+export async function runSuiteBatch(
+  suite: EvalSuite,
+  config: EvalConfig,
+  options: RunOptions = {}
+): Promise<RunResult> {
+  const model =
+    options.model ?? suite.model ?? config.default_model ?? "claude-opus-4-8";
+  const provider =
+    options.providerOverride ?? suite.provider ?? config.default_provider ?? "anthropic";
+
+  if (provider !== "anthropic") {
+    throw new Error(
+      `--batch is only supported for the Anthropic provider, but suite uses "${provider}".\n` +
+        `  Remove --batch or set provider to "anthropic".`
+    );
+  }
+
+  const filteredCases = await _expandAndFilter(suite, options);
+
+  const runId = randomUUID();
+  const timestamp = new Date().toISOString();
+
+  // Build batch requests, recording which indices failed at build time
+  const batchRequests: BatchRequest[] = [];
+  const buildErrors = new Map<number, string>();
+
+  for (let i = 0; i < filteredCases.length; i++) {
+    const req = buildBatchRequest(filteredCases[i], suite, model, i);
+    if ("error" in req) {
+      buildErrors.set(i, req.error);
+    } else {
+      batchRequests.push(req);
+    }
+  }
+
+  const anthropicProvider = new AnthropicProvider(config.anthropic_api_key);
+  const batchId = await anthropicProvider.batchSubmit(batchRequests);
+
+  return _pollAndGrade(
+    batchId,
+    filteredCases,
+    buildErrors,
+    suite,
+    config,
+    model,
+    provider,
+    anthropicProvider,
+    runId,
+    timestamp,
+    options
+  );
+}
+
+export async function resumeBatch(
+  batchId: string,
+  suite: EvalSuite,
+  config: EvalConfig,
+  options: RunOptions = {}
+): Promise<RunResult> {
+  const model =
+    options.model ?? suite.model ?? config.default_model ?? "claude-opus-4-8";
+  const provider =
+    options.providerOverride ?? suite.provider ?? config.default_provider ?? "anthropic";
+
+  if (provider !== "anthropic") {
+    throw new Error(
+      `resumeBatch only supports the Anthropic provider, but suite uses "${provider}".`
+    );
+  }
+
+  const filteredCases = await _expandAndFilter(suite, options);
+  const runId = randomUUID();
+  const timestamp = new Date().toISOString();
+  const anthropicProvider = new AnthropicProvider(config.anthropic_api_key);
+
+  return _pollAndGrade(
+    batchId,
+    filteredCases,
+    new Map(),
+    suite,
+    config,
+    model,
+    provider,
+    anthropicProvider,
+    runId,
+    timestamp,
+    options
+  );
 }
