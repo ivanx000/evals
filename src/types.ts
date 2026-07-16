@@ -87,6 +87,7 @@ export const EvalCaseSchema = z.object({
 export const EvalSuiteSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
+  extends: z.string().optional(),
   model: z.string().optional(),
   provider: z.enum(["anthropic", "openai", "ollama", "gemini"]).optional().default("anthropic"),
   system_prompt: z.string().optional(),
