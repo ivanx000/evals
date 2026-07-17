@@ -1,5 +1,7 @@
 # evals
 
+[![CI](https://github.com/ivanx000/evals/actions/workflows/ci.yml/badge.svg)](https://github.com/ivanx000/evals/actions/workflows/ci.yml)
+
 A pytest-style evaluation framework for LLM outputs. Define test suites in YAML, run them against any model, grade outputs with deterministic criteria or an LLM judge, and compare results across models.
 
 ## Quick Start

@@ -42,7 +42,12 @@ jobs:
       - name: Run eval suite
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: node dist/cli.js run "$SUITE" --output results/ci-run.json
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "Skipping: ANTHROPIC_API_KEY secret not configured"
+            exit 0
+          fi
+          node dist/cli.js run "$SUITE" --output results/ci-run.json
 
       - name: Upload results
         if: always()
