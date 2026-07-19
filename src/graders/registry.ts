@@ -8,6 +8,7 @@ import type {
   CodeExecutionCriteria,
   NumericToleranceCriteria,
   CalibrationCriteria,
+  JsonSchemaCriteria,
 } from "../types.js";
 import { gradeExactMatch } from "./exact_match.js";
 import { gradeContains } from "./contains.js";
@@ -17,6 +18,7 @@ import { gradeLLMJudge } from "./llm_judge.js";
 import { gradeCodeExecution } from "./code_execution.js";
 import { gradeNumericTolerance } from "./numeric_tolerance.js";
 import { gradeCalibration } from "./calibration.js";
+import { gradeJsonSchema } from "./json_schema.js";
 
 const registry = new Map<string, Grader>();
 
@@ -96,5 +98,12 @@ registerGrader({
   type: "calibration",
   async grade(output, criteria) {
     return gradeCalibration(output, criteria as CalibrationCriteria);
+  },
+});
+
+registerGrader({
+  type: "json_schema",
+  async grade(output, criteria) {
+    return gradeJsonSchema(output, criteria as JsonSchemaCriteria);
   },
 });

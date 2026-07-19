@@ -309,6 +309,67 @@ criteria:
 
 ---
 
+## json_schema
+
+Validates whether the model's output is valid JSON that matches a [JSON Schema](https://json-schema.org/).
+Use this for structured output evals, tool-call responses, or any task where the model must return a specific shape.
+
+```yaml
+- type: json_schema
+  schema:
+    type: object
+    required: [name, age]
+    properties:
+      name: { type: string }
+      age: { type: integer, minimum: 0 }
+    additionalProperties: false
+  extract_json: true   # optional, default false
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `schema` | object | required | A valid JSON Schema (Draft-07, via AJV) |
+| `extract_json` | boolean | `false` | Strip markdown code fences before parsing |
+
+### Grader result detail
+
+| Outcome | `passed` | `detail` |
+|---|---|---|
+| Valid JSON matching schema | `true` | `"JSON valid, schema matched"` |
+| Invalid JSON | `false` | `"JSON parse error: <message>"` |
+| Valid JSON, schema violation | `false` | `"Schema violations: <ajv messages>"` |
+
+### extract_json behaviour
+
+When `extract_json: true`, the grader strips markdown fences before attempting `JSON.parse`:
+
+1. Prefers a ` ```json ` fenced block
+2. Falls back to any generic ` ``` ` fenced block
+3. Falls back to the raw output
+
+This mirrors the extraction logic in `code_execution` and is useful when the model wraps its JSON in a markdown response.
+
+### Example YAML
+
+```yaml
+- id: user_profile_shape
+  prompt: |
+    Return a JSON object with name (string) and age (integer >= 0).
+    Wrap your response in a ```json code fence.
+  criteria:
+    - type: json_schema
+      extract_json: true
+      schema:
+        type: object
+        required: [name, age]
+        properties:
+          name: { type: string }
+          age: { type: integer, minimum: 0 }
+        additionalProperties: false
+```
+
+---
+
 ### Adding a built-in grader (core contributors)
 
 1. Create `src/graders/<name>.ts` exporting a `grade<Name>(output, criteria): GraderResult` function

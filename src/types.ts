@@ -52,6 +52,12 @@ export const CalibrationCriteriaSchema = z.object({
   case_sensitive: z.boolean().optional().default(false),
 });
 
+export const JsonSchemaCriteriaSchema = z.object({
+  type: z.literal("json_schema"),
+  schema: z.record(z.unknown()),
+  extract_json: z.boolean().optional().default(false),
+});
+
 export const CriteriaSchema = z.discriminatedUnion("type", [
   ExactMatchCriteriaSchema,
   ContainsCriteriaSchema,
@@ -61,6 +67,7 @@ export const CriteriaSchema = z.discriminatedUnion("type", [
   CodeExecutionCriteriaSchema,
   NumericToleranceCriteriaSchema,
   CalibrationCriteriaSchema,
+  JsonSchemaCriteriaSchema,
 ]);
 
 // ─── Eval suite schema ─────────────────────────────────────────────────────────
@@ -123,6 +130,7 @@ export type LLMJudgeCriteria = z.infer<typeof LLMJudgeCriteriaSchema>;
 export type CodeExecutionCriteria = z.infer<typeof CodeExecutionCriteriaSchema>;
 export type NumericToleranceCriteria = z.infer<typeof NumericToleranceCriteriaSchema>;
 export type CalibrationCriteria = z.infer<typeof CalibrationCriteriaSchema>;
+export type JsonSchemaCriteria = z.infer<typeof JsonSchemaCriteriaSchema>;
 export type Criteria = z.infer<typeof CriteriaSchema>;
 
 export type Turn = z.infer<typeof TurnSchema>;
