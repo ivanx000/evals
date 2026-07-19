@@ -191,6 +191,7 @@ export interface ProviderCallOptions {
   system_prompt?: string;
   temperature?: number;
   max_tokens: number;
+  onToken?: (token: string) => void;
 }
 
 export interface ProviderResponse {
