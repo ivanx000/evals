@@ -111,6 +111,7 @@ program
   .option("-w, --watch", "Re-run suite on file change")
   .option("--no-cache", "Disable semantic cache")
   .option("-v, --verbose", "Show full outputs and judge reasoning")
+  .option("-s, --stream", "Stream token-by-token output to stderr as each case runs")
   .option("--json <path>", "Also save raw JSON result to a specific path")
   .option("-o, --output <path>", "Override the results save path (default: ./results/<timestamp>.json)")
   .option("--filter <substring>", "Run only cases whose ID or tag matches the substring")
@@ -125,6 +126,7 @@ program
     watch?: boolean;
     cache: boolean;
     verbose?: boolean;
+    stream?: boolean;
     json?: string;
     output?: string;
     filter?: string;
@@ -205,6 +207,7 @@ program
               model: opts.model,
               noCache: !opts.cache,
               verbose: opts.verbose,
+              stream: opts.stream,
               timeout: parseInt(opts.timeout, 10),
               concurrency: parseInt(opts.concurrency, 10),
               filter: opts.filter,
