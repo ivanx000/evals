@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.56.0",
+    "ajv": "^8.20.0",
     "cli-table3": "^0.6.3",
     "commander": "^12.1.0",
     "cors": "^2.8.6",
