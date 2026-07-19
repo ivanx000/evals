@@ -43,15 +43,68 @@ export class GeminiProvider implements LLMProvider {
       messages.push({ role: "user", content: options.prompt ?? "" });
     }
 
+    const params = {
+      model: options.model,
+      max_tokens: options.max_tokens,
+      temperature: options.temperature,
+      messages,
+    };
+
+    if (options.onToken) {
+      let output = "";
+      let inputTokens: number | undefined;
+      let outputTokens: number | undefined;
+
+      try {
+        const stream = await withRetry(() =>
+          this.client.chat.completions.create({
+            ...params,
+            stream: true as const,
+          })
+        );
+        for await (const chunk of stream) {
+          const token = chunk.choices[0]?.delta?.content;
+          if (token) {
+            options.onToken(token);
+            output += token;
+          }
+          if (chunk.usage) {
+            inputTokens = chunk.usage.prompt_tokens;
+            outputTokens = chunk.usage.completion_tokens;
+          }
+        }
+      } catch (err) {
+        const e = err as { status?: number; message: string };
+        if (e.status === 401 || e.status === 403) {
+          throw new Error(
+            "Gemini authentication failed. Your GEMINI_API_KEY is invalid or expired.\n" +
+              "  Get a new key at: https://aistudio.google.com/app/apikey"
+          );
+        }
+        if (e.status === 429) {
+          throw new Error(
+            "Gemini rate limit exceeded after retries (429). Try reducing --concurrency or wait a moment."
+          );
+        }
+        if (e.status === 500 || e.status === 503) {
+          throw new Error(`Gemini server error (${e.status}). The service may be temporarily unavailable.`);
+        }
+        throw new Error(`Gemini API error: ${e.message}`);
+      }
+
+      let cost_usd: number | undefined;
+      const pricing = GEMINI_PRICING[options.model];
+      if (pricing && inputTokens !== undefined && outputTokens !== undefined) {
+        cost_usd = (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+      }
+
+      return { output, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd };
+    }
+
     let response: OpenAI.Chat.ChatCompletion;
     try {
       response = await withRetry(() =>
-        this.client.chat.completions.create({
-          model: options.model,
-          max_tokens: options.max_tokens,
-          temperature: options.temperature,
-          messages,
-        })
+        this.client.chat.completions.create(params)
       );
     } catch (err) {
       const e = err as { status?: number; message: string };

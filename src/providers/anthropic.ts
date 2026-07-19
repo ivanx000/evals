@@ -33,16 +33,64 @@ export class AnthropicProvider implements LLMProvider {
       ? options.messages.map((m) => ({ role: m.role, content: m.content }))
       : [{ role: "user", content: options.prompt ?? "" }];
 
+    const params = {
+      model: options.model,
+      max_tokens: options.max_tokens,
+      temperature: options.temperature,
+      system: options.system_prompt,
+      messages,
+    };
+
+    if (options.onToken) {
+      let output = "";
+      let inputTokens = 0;
+      let outputTokens = 0;
+
+      try {
+        const stream = this.client.messages.stream(params);
+        for await (const event of stream) {
+          if (
+            event.type === "content_block_delta" &&
+            event.delta.type === "text_delta"
+          ) {
+            options.onToken(event.delta.text);
+            output += event.delta.text;
+          }
+        }
+        const finalMsg = await stream.finalMessage();
+        inputTokens = finalMsg.usage.input_tokens;
+        outputTokens = finalMsg.usage.output_tokens;
+      } catch (err) {
+        const e = err as { status?: number; message: string };
+        if (e.status === 401) {
+          throw new Error(
+            "Anthropic authentication failed (401). Your ANTHROPIC_API_KEY is invalid or expired.\n" +
+              "  Check your key at: https://console.anthropic.com"
+          );
+        }
+        if (e.status === 429) {
+          throw new Error(
+            "Anthropic rate limit exceeded after retries (429). Try reducing --concurrency or wait a moment."
+          );
+        }
+        if (e.status === 500 || e.status === 503) {
+          throw new Error(`Anthropic server error (${e.status}). The service may be temporarily unavailable.`);
+        }
+        throw new Error(`Anthropic API error: ${e.message}`);
+      }
+
+      const pricing = ANTHROPIC_PRICING[options.model];
+      const cost_usd = pricing
+        ? (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000
+        : undefined;
+
+      return { output, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd };
+    }
+
     let response: Anthropic.Message;
     try {
       response = await withRetry(() =>
-        this.client.messages.create({
-          model: options.model,
-          max_tokens: options.max_tokens,
-          temperature: options.temperature,
-          system: options.system_prompt,
-          messages,
-        })
+        this.client.messages.create(params)
       );
     } catch (err) {
       const e = err as { status?: number; message: string };

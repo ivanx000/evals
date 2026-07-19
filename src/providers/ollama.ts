@@ -35,17 +35,14 @@ export class OllamaProvider implements LLMProvider {
       messages.push({ role: "user", content: options.prompt ?? "" });
     }
 
-    let response: OpenAI.Chat.ChatCompletion;
-    try {
-      response = await withRetry(() =>
-        this.client.chat.completions.create({
-          model: options.model,
-          max_tokens: options.max_tokens,
-          temperature: options.temperature,
-          messages,
-        })
-      );
-    } catch (err) {
+    const params = {
+      model: options.model,
+      max_tokens: options.max_tokens,
+      temperature: options.temperature,
+      messages,
+    };
+
+    const handleOllamaError = (err: unknown): never => {
       const e = err as { status?: number; message: string; code?: string };
       const msg = e.message ?? "";
       if (
@@ -66,11 +63,51 @@ export class OllamaProvider implements LLMProvider {
         );
       }
       throw new Error(`Ollama API error: ${e.message}`);
+    };
+
+    if (options.onToken) {
+      let output = "";
+      let inputTokens: number | undefined;
+      let outputTokens: number | undefined;
+
+      try {
+        const stream = await withRetry(() =>
+          this.client.chat.completions.create({
+            ...params,
+            stream: true as const,
+            stream_options: { include_usage: true },
+          })
+        );
+        for await (const chunk of stream) {
+          const token = chunk.choices[0]?.delta?.content;
+          if (token) {
+            options.onToken(token);
+            output += token;
+          }
+          if (chunk.usage) {
+            inputTokens = chunk.usage.prompt_tokens;
+            outputTokens = chunk.usage.completion_tokens;
+          }
+        }
+      } catch (err) {
+        handleOllamaError(err);
+      }
+
+      return { output, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: 0 };
     }
 
-    const output = response.choices[0]?.message?.content ?? "";
-    const inputTokens = response.usage?.prompt_tokens;
-    const outputTokens = response.usage?.completion_tokens;
+    let response: OpenAI.Chat.ChatCompletion;
+    try {
+      response = await withRetry(() =>
+        this.client.chat.completions.create(params)
+      );
+    } catch (err) {
+      handleOllamaError(err);
+    }
+
+    const output = response!.choices[0]?.message?.content ?? "";
+    const inputTokens = response!.usage?.prompt_tokens;
+    const outputTokens = response!.usage?.completion_tokens;
 
     return { output, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: 0 };
   }

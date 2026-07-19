@@ -26,6 +26,7 @@ export interface RunOptions {
   watch?: boolean;
   noCache?: boolean;
   verbose?: boolean;
+  stream?: boolean;
   timeout?: number;
   concurrency?: number;
   filter?: string;
@@ -249,8 +250,16 @@ async function runCase(
         max_tokens: suite.max_tokens ?? 1024,
       };
 
+      if (options.stream) {
+        process.stderr.write(`\n[${caseId}]\n`);
+        callOptions.onToken = (token) => process.stderr.write(token);
+      }
+
       const llm = makeProvider(provider, config);
       const response = await llm.call(callOptions);
+
+      if (options.stream) process.stderr.write("\n");
+
       output = response.output;
       input_tokens = (response.input_tokens ?? 0) + totalInputTokens;
       output_tokens = (response.output_tokens ?? 0) + totalOutputTokens;
@@ -277,8 +286,16 @@ async function runCase(
       }
 
       if (!cached) {
+        if (options.stream) {
+          process.stderr.write(`\n[${caseId}]\n`);
+          callOptions.onToken = (token) => process.stderr.write(token);
+        }
+
         const llm = makeProvider(provider, config);
         const response = await llm.call(callOptions);
+
+        if (options.stream) process.stderr.write("\n");
+
         output = response.output;
         input_tokens = response.input_tokens;
         output_tokens = response.output_tokens;
