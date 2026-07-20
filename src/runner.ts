@@ -30,6 +30,7 @@ export interface RunOptions {
   timeout?: number;
   concurrency?: number;
   filter?: string;
+  tagFilter?: string[];
   datasetOverride?: string;
   batch?: boolean;
   _pollDelayMs?: number;
@@ -402,7 +403,7 @@ export async function runSuite(
     );
   }
 
-  const filteredCases = options.filter
+  const substringFiltered = options.filter
     ? resolvedCases.filter((c) => {
         const filterLower = options.filter!.toLowerCase();
         const matchesId = c.id?.toLowerCase().includes(filterLower) ?? false;
@@ -410,6 +411,12 @@ export async function runSuite(
         return matchesId || matchesTags;
       })
     : resolvedCases;
+
+  const activeTags = options.tagFilter && options.tagFilter.length > 0 ? options.tagFilter : null;
+  const filteredCases = activeTags
+    ? substringFiltered.filter((c) => c.tags?.some((t) => activeTags.includes(t)) ?? false)
+    : substringFiltered;
+  const skipped = activeTags ? substringFiltered.length - filteredCases.length : undefined;
 
   const runId = randomUUID();
   const timestamp = new Date().toISOString();
@@ -444,6 +451,7 @@ export async function runSuite(
     total: cases.length,
     passed,
     failed,
+    ...(skipped !== undefined && { skipped }),
     pass_rate: cases.length > 0 ? passed / cases.length : 0,
     total_cost_usd,
     total_latency_ms,

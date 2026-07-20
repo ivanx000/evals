@@ -115,6 +115,7 @@ program
   .option("--json <path>", "Also save raw JSON result to a specific path")
   .option("-o, --output <path>", "Override the results save path (default: ./results/<timestamp>.json)")
   .option("--filter <substring>", "Run only cases whose ID or tag matches the substring")
+  .option("--tag <tag>", "Run only cases with this tag (repeatable, OR logic)", (val: string, prev: string[]) => prev.concat([val]), [] as string[])
   .option("--dataset <path>", "Override the dataset path specified in the suite YAML")
   .option("--timeout <ms>", "Per-case timeout in milliseconds (default: 30000)", "30000")
   .option("--concurrency <n>", "Run N cases in parallel (default: 1)", "1")
@@ -130,6 +131,7 @@ program
     json?: string;
     output?: string;
     filter?: string;
+    tag: string[];
     dataset?: string;
     timeout: string;
     concurrency: string;
@@ -147,13 +149,17 @@ program
         if (opts.dryRun) {
           const provider = suite.provider ?? config.default_provider ?? "anthropic";
           const model = opts.model ?? suite.model ?? config.default_model ?? "claude-opus-4-8";
-          const cases = opts.filter
+          const substringCases = opts.filter
             ? suite.cases.filter((c) => {
                 const f = opts.filter!.toLowerCase();
                 return (c.id?.toLowerCase().includes(f) ?? false) ||
                   (c.tags?.some((t) => t.toLowerCase().includes(f)) ?? false);
               })
             : suite.cases;
+          const activeTags = opts.tag.length > 0 ? opts.tag : null;
+          const cases = activeTags
+            ? substringCases.filter((c) => c.tags?.some((t) => activeTags.includes(t)) ?? false)
+            : substringCases;
 
           const datasetPath = opts.dataset ?? suite.dataset;
           console.log(`\nDry run — no API calls will be made`);
@@ -161,7 +167,8 @@ program
           console.log(`Provider: ${provider}`);
           console.log(`Model:    ${model}`);
           if (datasetPath) console.log(`Dataset:  ${datasetPath}${suite.dataset_limit ? ` (limit: ${suite.dataset_limit})` : ""}${suite.dataset_sample ? ` (sample: ${suite.dataset_sample})` : ""}`);
-          if (opts.filter) console.log(`Filter:   "${opts.filter}" (${cases.length}/${suite.cases.length} template(s) match)`);
+          if (opts.filter) console.log(`Filter:   "${opts.filter}" (${substringCases.length}/${suite.cases.length} template(s) match)`);
+          if (activeTags) console.log(`Tags:     [${activeTags.join(", ")}] (${cases.length}/${substringCases.length} template(s) match)`);
           console.log(`\nCase templates (${cases.length}):`);
           cases.forEach((c, i) => {
             const id = c.id ?? `case-${i + 1}`;

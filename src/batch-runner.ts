@@ -82,7 +82,7 @@ async function _expandAndFilter(
     );
   }
 
-  return options.filter
+  const substringFiltered = options.filter
     ? resolvedCases.filter((c) => {
         const f = options.filter!.toLowerCase();
         return (
@@ -91,6 +91,11 @@ async function _expandAndFilter(
         );
       })
     : resolvedCases;
+
+  const activeTags = options.tagFilter && options.tagFilter.length > 0 ? options.tagFilter : null;
+  return activeTags
+    ? substringFiltered.filter((c) => c.tags?.some((t) => activeTags.includes(t)) ?? false)
+    : substringFiltered;
 }
 
 async function _pollAndGrade(
