@@ -57,7 +57,13 @@ export async function gradeJsonPath(
       };
     }
 
+    // Collect all applicable numeric conditions — evaluate all of them (AND logic)
+    const failures: string[] = [];
+    const details: string[] = [];
+    let hasCondition = false;
+
     if ("gt" in criteria && criteria.gt !== undefined) {
+      hasCondition = true;
       if (typeof value !== "number") {
         return {
           criteria_type: "json_path",
@@ -65,17 +71,15 @@ export async function gradeJsonPath(
           detail: `${criteria.path} is ${display} (not a number), cannot compare with gt`,
         };
       }
-      const passed = value > criteria.gt;
-      return {
-        criteria_type: "json_path",
-        passed,
-        detail: passed
-          ? `${criteria.path} = ${value} > ${criteria.gt}`
-          : `${criteria.path} = ${value} is not > ${criteria.gt}`,
-      };
+      if (value > criteria.gt) {
+        details.push(`${criteria.path} = ${value} > ${criteria.gt}`);
+      } else {
+        failures.push(`${criteria.path} = ${value} is not > ${criteria.gt}`);
+      }
     }
 
     if ("gte" in criteria && criteria.gte !== undefined) {
+      hasCondition = true;
       if (typeof value !== "number") {
         return {
           criteria_type: "json_path",
@@ -83,17 +87,15 @@ export async function gradeJsonPath(
           detail: `${criteria.path} is ${display} (not a number), cannot compare with gte`,
         };
       }
-      const passed = value >= criteria.gte;
-      return {
-        criteria_type: "json_path",
-        passed,
-        detail: passed
-          ? `${criteria.path} = ${value} >= ${criteria.gte}`
-          : `${criteria.path} = ${value} is not >= ${criteria.gte}`,
-      };
+      if (value >= criteria.gte) {
+        details.push(`${criteria.path} = ${value} >= ${criteria.gte}`);
+      } else {
+        failures.push(`${criteria.path} = ${value} is not >= ${criteria.gte}`);
+      }
     }
 
     if ("lt" in criteria && criteria.lt !== undefined) {
+      hasCondition = true;
       if (typeof value !== "number") {
         return {
           criteria_type: "json_path",
@@ -101,17 +103,15 @@ export async function gradeJsonPath(
           detail: `${criteria.path} is ${display} (not a number), cannot compare with lt`,
         };
       }
-      const passed = value < criteria.lt;
-      return {
-        criteria_type: "json_path",
-        passed,
-        detail: passed
-          ? `${criteria.path} = ${value} < ${criteria.lt}`
-          : `${criteria.path} = ${value} is not < ${criteria.lt}`,
-      };
+      if (value < criteria.lt) {
+        details.push(`${criteria.path} = ${value} < ${criteria.lt}`);
+      } else {
+        failures.push(`${criteria.path} = ${value} is not < ${criteria.lt}`);
+      }
     }
 
     if ("lte" in criteria && criteria.lte !== undefined) {
+      hasCondition = true;
       if (typeof value !== "number") {
         return {
           criteria_type: "json_path",
@@ -119,13 +119,19 @@ export async function gradeJsonPath(
           detail: `${criteria.path} is ${display} (not a number), cannot compare with lte`,
         };
       }
-      const passed = value <= criteria.lte;
+      if (value <= criteria.lte) {
+        details.push(`${criteria.path} = ${value} <= ${criteria.lte}`);
+      } else {
+        failures.push(`${criteria.path} = ${value} is not <= ${criteria.lte}`);
+      }
+    }
+
+    if (hasCondition) {
+      const passed = failures.length === 0;
       return {
         criteria_type: "json_path",
         passed,
-        detail: passed
-          ? `${criteria.path} = ${value} <= ${criteria.lte}`
-          : `${criteria.path} = ${value} is not <= ${criteria.lte}`,
+        detail: passed ? details.join(", ") : failures.join("; "),
       };
     }
 
