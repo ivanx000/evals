@@ -370,6 +370,95 @@ This mirrors the extraction logic in `code_execution` and is useful when the mod
 
 ---
 
+## json_path
+
+Extracts a value from the model's JSON output using a [JSONPath](https://goessner.net/articles/JsonPath/)
+expression and checks it against a condition. Use this for structured output evals where you care about
+a specific field rather than the whole schema.
+
+```yaml
+- type: json_path
+  path: "$.result.label"
+  equals: "positive"          # exact match (string, number, boolean, or null)
+
+- type: json_path
+  path: "$.scores[0]"
+  gt: 0.8                     # numeric comparisons: gt, gte, lt, lte
+
+- type: json_path
+  path: "$.items"
+  contains: "apple"           # array membership or substring check
+
+- type: json_path
+  extract_json: true          # strip markdown fences before parsing
+  path: "$.name"
+  equals: "Alice"
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `path` | string | required | JSONPath expression (e.g. `$.field`, `$.arr[0]`, `$..deep`) |
+| `extract_json` | boolean | `false` | Strip markdown code fences before parsing |
+| `equals` | string \| number \| boolean \| null | — | Strict equality check (`===`) |
+| `gt` | number | — | Passes if extracted value > threshold |
+| `gte` | number | — | Passes if extracted value >= threshold |
+| `lt` | number | — | Passes if extracted value < threshold |
+| `lte` | number | — | Passes if extracted value <= threshold |
+| `contains` | string \| number \| boolean | — | Array membership or string substring check |
+
+At least one condition field is required (`equals`, `gt`, `gte`, `lt`, `lte`, or `contains`).
+
+### Condition details
+
+**`equals`** — uses strict equality (`===`). No type coercion: `"1"` does not equal `1`.
+
+**`gt` / `gte` / `lt` / `lte`** — require the extracted value to be a number. Fails with a `detail` message (not an `error`) if the value is a non-number type.
+
+**`contains`** — behaviour depends on the extracted value type:
+- **Array**: passes if any element strictly equals the needle value.
+- **String**: passes if the needle is a substring of the extracted string.
+- **Other types**: fails with a `detail` message explaining the type mismatch.
+
+### Grader result detail
+
+| Outcome | `passed` | `detail` / `error` |
+|---|---|---|
+| Path found, condition met | `true` | e.g. `"$.result.label = \"positive\""` |
+| Invalid JSON output | `false` | `detail: "JSON parse error: <msg>"` |
+| Path not found | `false` | `detail: "Path \"$.x\" not found in output"` |
+| Condition not met | `false` | `detail: "$.scores[0] = 0.7 is not > 0.8"` |
+| Non-number for numeric op | `false` | `detail: "$.x is \"high\" (not a number), cannot compare with gt"` |
+| Invalid JSONPath expression | `false` | `error: "Invalid JSONPath expression..."` |
+| No condition specified | `false` | `error: "No condition specified ..."` |
+
+### Example YAML
+
+```yaml
+- id: sentiment_label
+  prompt: |
+    Classify the sentiment. Respond with JSON: {"result": {"label": "positive"|"negative"|"neutral"}}
+  criteria:
+    - type: json_path
+      path: "$.result.label"
+      equals: "positive"
+
+- id: confidence_threshold
+  prompt: "Rate your confidence 0–1. Respond with JSON: {\"confidence\": <number>}"
+  criteria:
+    - type: json_path
+      path: "$.confidence"
+      gte: 0.7
+
+- id: tags_include
+  prompt: "Return JSON with a tags array."
+  criteria:
+    - type: json_path
+      path: "$.tags"
+      contains: "important"
+```
+
+---
+
 ### Adding a built-in grader (core contributors)
 
 1. Create `src/graders/<name>.ts` exporting a `grade<Name>(output, criteria): GraderResult` function
@@ -463,7 +552,7 @@ A working example is included at `examples/plugins/sentiment_grader.js`.
 - The framework scans `graders/` in the current working directory at startup
 - Only `.js` and `.mjs` files are loaded; `.ts` files require a pre-compilation step
 - Each file must export a default object with at least `{ type, run }`
-- Plugin type names must not conflict with built-in grader names (`exact_match`, `contains`, `max_words`, `regex`, `llm_judge`, `code_execution`, `numeric_tolerance`, `calibration`)
+- Plugin type names must not conflict with built-in grader names (`exact_match`, `contains`, `max_words`, `regex`, `llm_judge`, `code_execution`, `numeric_tolerance`, `calibration`, `json_schema`, `json_path`)
 - Duplicate type names: the first plugin loaded wins (alphabetical file order); a warning is printed for subsequent duplicates
 
 ### Error handling

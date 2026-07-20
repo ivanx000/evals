@@ -68,16 +68,7 @@ export const JsonPathCriteriaSchema = z.object({
   lt: z.number().optional(),
   lte: z.number().optional(),
   contains: z.union([z.string(), z.number(), z.boolean()]).optional(),
-}).refine(
-  (d) =>
-    d.equals !== undefined ||
-    d.gt !== undefined ||
-    d.gte !== undefined ||
-    d.lt !== undefined ||
-    d.lte !== undefined ||
-    d.contains !== undefined,
-  { message: "json_path requires at least one condition: equals, gt, gte, lt, lte, or contains" }
-);
+});
 
 export const CriteriaSchema = z.discriminatedUnion("type", [
   ExactMatchCriteriaSchema,
