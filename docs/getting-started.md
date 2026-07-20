@@ -76,6 +76,7 @@ evals run examples/summarization.yaml
 | `-o, --output <path>` | Override the results save path (default: `./results/<timestamp>.json`) |
 | `--json <path>` | Also write the raw JSON result to a second path |
 | `--filter <substring>` | Run only cases whose `id` or tag contains the substring |
+| `--tag <tag>` | Run only cases that have this tag (repeatable; multiple tags use OR logic) |
 | `--timeout <ms>` | Per-case API timeout in milliseconds (default: `30000`) |
 | `--concurrency <n>` | Run N cases in parallel (default: `1`) |
 | `--dry-run` | Validate the YAML and print what would run — no API calls made |

@@ -134,6 +134,10 @@ export function printRunResult(result: RunResult, verbose = false): void {
     ` — est. cost: ${usd(result.total_cost_usd)}`
   );
 
+  if (result.skipped !== undefined && result.skipped > 0) {
+    console.log(`${DIM}${result.skipped} case(s) skipped (tag filter)${RESET}`);
+  }
+
   if (result.batch_id) {
     const batchCost = result.batch_cost_usd !== undefined ? usd(result.batch_cost_usd) : "—";
     console.log(

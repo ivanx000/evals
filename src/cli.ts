@@ -207,6 +207,7 @@ program
           ? await runSuiteBatch(suite, config, {
               model: opts.model,
               filter: opts.filter,
+              tagFilter: opts.tag.length > 0 ? opts.tag : undefined,
               datasetOverride: opts.dataset,
               onCaseResult: printCaseProgress,
             })
@@ -218,6 +219,7 @@ program
               timeout: parseInt(opts.timeout, 10),
               concurrency: parseInt(opts.concurrency, 10),
               filter: opts.filter,
+              tagFilter: opts.tag.length > 0 ? opts.tag : undefined,
               datasetOverride: opts.dataset,
               onCaseResult: printCaseProgress,
             });
