@@ -70,13 +70,12 @@ export const JsonPathCriteriaSchema = z.object({
   contains: z.union([z.string(), z.number(), z.boolean()]).optional(),
 });
 
-// Catch-all for user-land plugin grader types not in the built-in list.
-// Validated at runtime by the plugin dispatch in graders/index.ts.
-export const PluginCriteriaSchema = z
-  .object({ type: z.string() })
-  .passthrough();
+const BUILTIN_CRITERIA_TYPES = new Set([
+  "exact_match", "contains", "max_words", "regex", "llm_judge",
+  "code_execution", "numeric_tolerance", "calibration", "json_schema", "json_path",
+]);
 
-export const CriteriaSchema = z.union([
+const BuiltinCriteriaSchema = z.discriminatedUnion("type", [
   ExactMatchCriteriaSchema,
   ContainsCriteriaSchema,
   MaxWordsCriteriaSchema,
@@ -87,8 +86,20 @@ export const CriteriaSchema = z.union([
   CalibrationCriteriaSchema,
   JsonSchemaCriteriaSchema,
   JsonPathCriteriaSchema,
-  PluginCriteriaSchema,
 ]);
+
+// Catch-all for user-land plugin grader types not in the built-in list.
+// Only accepts types that are NOT built-ins, so malformed built-in criteria
+// still fail validation. Validated at runtime by graders/index.ts plugin dispatch.
+export const PluginCriteriaSchema = z
+  .object({
+    type: z.string().refine((t) => !BUILTIN_CRITERIA_TYPES.has(t), {
+      message: "Not a valid built-in grader type — check spelling or register as a plugin",
+    }),
+  })
+  .passthrough();
+
+export const CriteriaSchema = z.union([BuiltinCriteriaSchema, PluginCriteriaSchema]);
 
 // ─── Eval suite schema ─────────────────────────────────────────────────────────
 
