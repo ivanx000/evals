@@ -12,6 +12,7 @@ export { gradeCodeExecution } from "./code_execution.js";
 export { gradeNumericTolerance } from "./numeric_tolerance.js";
 export { gradeCalibration } from "./calibration.js";
 export { gradeJsonSchema } from "./json_schema.js";
+export { gradeJsonPath } from "./json_path.js";
 
 // Re-export registry utilities so callers can register custom graders programmatically
 export { registerGrader, getGrader, isRegistered, getRegisteredTypes } from "./registry.js";

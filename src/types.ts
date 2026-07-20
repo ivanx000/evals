@@ -58,6 +58,27 @@ export const JsonSchemaCriteriaSchema = z.object({
   extract_json: z.boolean().optional().default(false),
 });
 
+export const JsonPathCriteriaSchema = z.object({
+  type: z.literal("json_path"),
+  path: z.string(),
+  extract_json: z.boolean().optional().default(false),
+  equals: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+  gt: z.number().optional(),
+  gte: z.number().optional(),
+  lt: z.number().optional(),
+  lte: z.number().optional(),
+  contains: z.union([z.string(), z.number(), z.boolean()]).optional(),
+}).refine(
+  (d) =>
+    d.equals !== undefined ||
+    d.gt !== undefined ||
+    d.gte !== undefined ||
+    d.lt !== undefined ||
+    d.lte !== undefined ||
+    d.contains !== undefined,
+  { message: "json_path requires at least one condition: equals, gt, gte, lt, lte, or contains" }
+);
+
 export const CriteriaSchema = z.discriminatedUnion("type", [
   ExactMatchCriteriaSchema,
   ContainsCriteriaSchema,
@@ -68,6 +89,7 @@ export const CriteriaSchema = z.discriminatedUnion("type", [
   NumericToleranceCriteriaSchema,
   CalibrationCriteriaSchema,
   JsonSchemaCriteriaSchema,
+  JsonPathCriteriaSchema,
 ]);
 
 // ─── Eval suite schema ─────────────────────────────────────────────────────────
@@ -131,6 +153,7 @@ export type CodeExecutionCriteria = z.infer<typeof CodeExecutionCriteriaSchema>;
 export type NumericToleranceCriteria = z.infer<typeof NumericToleranceCriteriaSchema>;
 export type CalibrationCriteria = z.infer<typeof CalibrationCriteriaSchema>;
 export type JsonSchemaCriteria = z.infer<typeof JsonSchemaCriteriaSchema>;
+export type JsonPathCriteria = z.infer<typeof JsonPathCriteriaSchema>;
 export type Criteria = z.infer<typeof CriteriaSchema>;
 
 export type Turn = z.infer<typeof TurnSchema>;

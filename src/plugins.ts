@@ -12,6 +12,7 @@ const BUILTIN_TYPES = new Set([
   "numeric_tolerance",
   "calibration",
   "json_schema",
+  "json_path",
 ]);
 
 export async function loadPlugins(pluginsDir?: string): Promise<Map<string, PluginGrader>> {
