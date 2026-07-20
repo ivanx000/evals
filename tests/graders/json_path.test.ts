@@ -109,6 +109,40 @@ describe("gradeJsonPath — gt / gte / lt / lte", () => {
     expect(r.detail).toContain("not a number");
     expect(r.error).toBeUndefined();
   });
+
+  it("passes range check when value is within both gt and lte bounds", async () => {
+    const r = await gradeJsonPath(
+      JSON.stringify({ score: 75 }),
+      { ...base, path: "$.score", gt: 0, lte: 100 }
+    );
+    expect(r.passed).toBe(true);
+    expect(r.detail).toContain("75");
+  });
+
+  it("fails range check when value exceeds lte even if gt passes", async () => {
+    const r = await gradeJsonPath(
+      JSON.stringify({ score: 150 }),
+      { ...base, path: "$.score", gt: 0, lte: 100 }
+    );
+    expect(r.passed).toBe(false);
+    expect(r.detail).toContain("150");
+  });
+
+  it("fails range check when value is below gte even if lte passes", async () => {
+    const r = await gradeJsonPath(
+      JSON.stringify({ score: -5 }),
+      { ...base, path: "$.score", gte: 0, lt: 100 }
+    );
+    expect(r.passed).toBe(false);
+  });
+
+  it("passes with all four numeric operators satisfied", async () => {
+    const r = await gradeJsonPath(
+      JSON.stringify({ n: 50 }),
+      { ...base, path: "$.n", gt: 0, gte: 1, lt: 100, lte: 99 }
+    );
+    expect(r.passed).toBe(true);
+  });
 });
 
 describe("gradeJsonPath — contains", () => {

@@ -70,7 +70,13 @@ export const JsonPathCriteriaSchema = z.object({
   contains: z.union([z.string(), z.number(), z.boolean()]).optional(),
 });
 
-export const CriteriaSchema = z.discriminatedUnion("type", [
+// Catch-all for user-land plugin grader types not in the built-in list.
+// Validated at runtime by the plugin dispatch in graders/index.ts.
+export const PluginCriteriaSchema = z
+  .object({ type: z.string() })
+  .passthrough();
+
+export const CriteriaSchema = z.union([
   ExactMatchCriteriaSchema,
   ContainsCriteriaSchema,
   MaxWordsCriteriaSchema,
@@ -81,6 +87,7 @@ export const CriteriaSchema = z.discriminatedUnion("type", [
   CalibrationCriteriaSchema,
   JsonSchemaCriteriaSchema,
   JsonPathCriteriaSchema,
+  PluginCriteriaSchema,
 ]);
 
 // ─── Eval suite schema ─────────────────────────────────────────────────────────
