@@ -191,6 +191,7 @@ export interface RunResult {
   total: number;
   passed: number;
   failed: number;
+  skipped?: number;
   pass_rate: number;
   total_cost_usd: number;
   total_latency_ms: number;
