@@ -89,6 +89,12 @@ evals run examples/summarization.yaml
 # Run only cases tagged "smoke" or with "smoke" in their ID
 evals run suite.yaml --filter smoke
 
+# Run only cases explicitly tagged "smoke"
+evals run suite.yaml --tag smoke
+
+# Run cases tagged "smoke" OR "regression" (OR logic across multiple --tag flags)
+evals run suite.yaml --tag smoke --tag regression
+
 # Validate a suite without making any API calls
 evals run suite.yaml --dry-run
 
