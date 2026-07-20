@@ -123,12 +123,15 @@ describe("EvalSuiteSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects an unknown criteria type", () => {
+  it("accepts an unrecognized criteria type (treated as plugin, validated at runtime)", () => {
+    // Plugin grader types are not in the built-in Zod discriminator; they pass YAML
+    // validation and are dispatched to user-land plugins at runtime. A typo or
+    // missing plugin surfaces as a runtime error, not a schema error.
     const result = EvalSuiteSchema.safeParse({
       ...validSuite,
       cases: [{ prompt: "test", criteria: [{ type: "unknown_grader", value: "x" }] }],
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("accepts all valid criteria types together", () => {
