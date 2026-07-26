@@ -27,6 +27,7 @@ import {
   printDiffResult,
 } from "./reporter.js";
 import { computeDiff } from "./diff.js";
+import { generateSuiteYaml, defaultModelFor, isInitProvider, type InitProvider } from "./init.js";
 import {
   runBenchmark,
   saveBenchmarkReportJson,
@@ -101,6 +102,79 @@ function parseProviderModel(
   }
   return { provider: fallbackProvider, model: spec };
 }
+
+// ── eval init ─────────────────────────────────────────────────────────────────
+
+program
+  .command("init <name>")
+  .description("Scaffold a starter eval suite YAML file")
+  .option("--provider <provider>", "Provider: anthropic|openai|ollama|gemini")
+  .option("-m, --model <model>", "Model ID (defaults to a sensible model for the chosen provider)")
+  .option("--description <text>", "One-line description of the suite")
+  .option("-y, --yes", "Skip interactive prompts and use defaults/flags as-is")
+  .option("-f, --force", "Overwrite the target file if it already exists")
+  .action(async (name: string, opts: {
+    provider?: string;
+    model?: string;
+    description?: string;
+    yes?: boolean;
+    force?: boolean;
+  }) => {
+    const suiteName = name.replace(/\.ya?ml$/i, "");
+    const filePath = path.resolve(/\.ya?ml$/i.test(name) ? name : `${suiteName}.yaml`);
+
+    if (fs.existsSync(filePath) && !opts.force) {
+      console.error(`Error: ${filePath} already exists.`);
+      console.error(`  Use --force to overwrite it.`);
+      process.exitCode = 1;
+      return;
+    }
+
+    if (opts.provider && !isInitProvider(opts.provider)) {
+      console.error(`Error: unknown provider "${opts.provider}". Choose from: anthropic, openai, ollama, gemini.`);
+      process.exitCode = 1;
+      return;
+    }
+
+    let provider: InitProvider = (opts.provider as InitProvider | undefined) ?? "anthropic";
+    let model = opts.model ?? defaultModelFor(provider);
+    let description = opts.description ?? `${suiteName} evaluation suite`;
+
+    const canPrompt = !opts.yes && process.stdin.isTTY && process.stdout.isTTY;
+    if (canPrompt) {
+      const readline = await import("readline/promises");
+      const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+      try {
+        const providerAnswer = (await rl.question(`Provider [${provider}]: `)).trim();
+        if (providerAnswer) {
+          if (!isInitProvider(providerAnswer)) {
+            console.error(`Error: unknown provider "${providerAnswer}". Choose from: anthropic, openai, ollama, gemini.`);
+            process.exitCode = 1;
+            return;
+          }
+          provider = providerAnswer;
+          if (!opts.model) model = defaultModelFor(provider);
+        }
+
+        const modelAnswer = (await rl.question(`Model [${model}]: `)).trim();
+        if (modelAnswer) model = modelAnswer;
+
+        const descriptionAnswer = (await rl.question(`Description [${description}]: `)).trim();
+        if (descriptionAnswer) description = descriptionAnswer;
+      } finally {
+        rl.close();
+      }
+    }
+
+    const yamlContent = generateSuiteYaml({ name: suiteName, provider, model, description });
+    fs.writeFileSync(filePath, yamlContent);
+
+    console.log(`\nCreated ${filePath}`);
+    console.log(`  Provider: ${provider}`);
+    console.log(`  Model:    ${model}`);
+    console.log(`\nRun it with:`);
+    console.log(`  evals run ${path.relative(process.cwd(), filePath)}`);
+  });
 
 // ── eval run ──────────────────────────────────────────────────────────────────
 
