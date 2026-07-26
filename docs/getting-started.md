@@ -57,6 +57,46 @@ Config is auto-discovered in the working directory. Override with `--config <pat
 
 ## Commands
 
+### `evals init <name>`
+
+Scaffold a starter suite YAML file. Prompts interactively for provider, model, and
+description (each with a sensible default) and writes `<name>.yaml` with one live
+example case plus a couple of commented-out cases showing other grader types.
+
+```bash
+evals init my-suite
+```
+
+```
+Provider [anthropic]:
+Model [claude-haiku-4-5]:
+Description [my-suite evaluation suite]:
+
+Created my-suite.yaml
+  Provider: anthropic
+  Model:    claude-haiku-4-5
+
+Run it with:
+  evals run my-suite.yaml
+```
+
+**Options:**
+
+| Flag | Description |
+|---|---|
+| `--provider <name>` | Provider to use: `anthropic` \| `openai` \| `ollama` \| `gemini` (default: `anthropic`) |
+| `-m, --model <id>` | Model ID (default: a sensible model for the chosen provider) |
+| `--description <text>` | One-line description written into the YAML (default: `<name> evaluation suite`) |
+| `-y, --yes` | Skip interactive prompts — use flag values / defaults as-is (useful in scripts and CI) |
+| `-f, --force` | Overwrite `<name>.yaml` if it already exists |
+
+When stdin isn't a TTY (e.g. piped input, CI), prompts are skipped automatically as if `--yes` were passed.
+
+```bash
+# Non-interactive, fully specified
+evals init my-suite --yes --provider openai --model gpt-4o-mini --description "Smoke tests for the support bot"
+```
+
 ### `evals run <suite.yaml>`
 
 Run all cases in a suite and display a results table.
