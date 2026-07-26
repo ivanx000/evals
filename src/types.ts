@@ -275,7 +275,6 @@ export const GEMINI_PRICING: Record<string, { input: number; output: number }> =
 
 export interface PluginGrader {
   type: string;
-  validate: (config: unknown) => import("zod").ZodSchema;
   run: (output: string, config: unknown) => Promise<GraderResult>;
 }
 
