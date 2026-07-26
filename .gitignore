@@ -6,3 +6,4 @@ results/
 .env
 .evalrc.json
 .claude/logs/
+.DS_Store

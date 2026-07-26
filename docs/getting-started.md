@@ -235,7 +235,8 @@ evals report --suite summarization
 
 ## Writing your first suite
 
-Create a YAML file:
+Run `evals init my-suite` to scaffold a starter file interactively (see
+[`evals init`](#evals-init-name) above), or create a YAML file by hand:
 
 ```yaml
 name: "My First Suite"
