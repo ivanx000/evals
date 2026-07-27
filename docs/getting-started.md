@@ -327,7 +327,9 @@ If a required key is missing when a command is run, `evals` will print a clear e
 
 ## CI integration
 
-Exit code is `1` when any case fails, `0` when all pass:
+Exit code is `1` when any case fails, `0` when all pass — and also `1` if
+`--filter`/`--tag`/dataset ends up matching **zero** cases, so a typo'd flag
+can't silently go green:
 
 ```bash
 evals run my-suite.yaml && echo "All green"
@@ -342,8 +344,14 @@ evals run my-suite.yaml            # the real run
 
 Results JSON is always written to `./results/` for artifact storage.
 
+For the full recipe — pinning output paths, diffing against a baseline in CI,
+and failing the build on regressions — see [ci.md](./ci.md).
+
 ### GitHub Actions
 
-A ready-made workflow is available at [.github/workflows/eval.yml](../.github/workflows/eval.yml). It runs `evals run` on every push and pull request, caches `node_modules`, and fails the check if any case fails.
+Two ready-made workflows are available:
 
-To use it, add your API key as a repository secret (`ANTHROPIC_API_KEY`) and update the `SUITE` env var in the workflow to point at your suite file.
+- [.github/workflows/eval.yml](../.github/workflows/eval.yml) — runs `evals run` on every push and pull request, caches `node_modules`, and fails the check if any case fails.
+- [.github/workflows/eval-regression.yml](../.github/workflows/eval-regression.yml) — runs on pull requests, diffs the PR's results against the latest `main`-branch baseline, and posts the regression table to the job summary. See [ci.md](./ci.md) for how it works.
+
+To use either, add your API key as a repository secret (`ANTHROPIC_API_KEY`) and update the `SUITE` env var in the workflow to point at your suite file.

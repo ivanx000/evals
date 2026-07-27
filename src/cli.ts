@@ -738,7 +738,13 @@ program
         console.log(`Results saved → ${savedPath}`);
       }
 
-      if (result.failed > 0) process.exitCode = 1;
+      if (result.total === 0) {
+        console.error(`\nError: 0 cases matched — nothing was evaluated.`);
+        console.error(`  Check --filter and --dataset match the original submission.`);
+        process.exitCode = 1;
+      } else if (result.failed > 0) {
+        process.exitCode = 1;
+      }
     } catch (err) {
       console.error(`\nError: ${(err as Error).message}`);
       process.exitCode = 1;

@@ -1,0 +1,150 @@
+name: Eval Regression Check
+
+# Diffs PR eval results against the latest baseline from main, and fails the
+# check if any case regresses (pass → fail). See docs/ci.md for the full recipe.
+#
+# Two jobs:
+#   - update-baseline: runs on every push to main, caches the results as the
+#     new baseline (cache key includes the run id so it never collides; PR
+#     builds resolve "latest" via the restore-keys prefix match).
+#   - eval-regression: runs on PRs, restores that baseline, runs the suite on
+#     the PR branch, and diffs the two.
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  SUITE: examples/summarization.yaml   # ← change to your suite file
+
+jobs:
+  update-baseline:
+    if: github.event_name == 'push'
+    name: Update baseline (main)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run suite on main
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "Skipping: ANTHROPIC_API_KEY secret not configured"
+            exit 0
+          fi
+          node dist/cli.js run "$SUITE" --output baseline.json
+
+      - name: Save baseline
+        if: hashFiles('baseline.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: baseline.json
+          key: eval-baseline-${{ github.run_id }}
+
+  eval-regression:
+    if: github.event_name == 'pull_request'
+    name: Diff against baseline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # Exact key never matches — this forces the restore-keys prefix match,
+      # which resolves to the most recently created "eval-baseline-*" cache
+      # (i.e. the latest main-branch run).
+      - name: Restore baseline from main
+        uses: actions/cache/restore@v4
+        with:
+          path: baseline.json
+          key: eval-baseline-unused
+          restore-keys: |
+            eval-baseline-
+
+      - name: Run suite on PR branch
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "Skipping: ANTHROPIC_API_KEY secret not configured"
+            exit 0
+          fi
+          node dist/cli.js run "$SUITE" --output candidate.json
+
+      - name: Diff against baseline
+        if: always()
+        run: |
+          if [ ! -f baseline.json ]; then
+            echo "No baseline available yet (first run on main, or cache expired) — skipping regression check." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ ! -f candidate.json ]; then
+            echo "No candidate results (ANTHROPIC_API_KEY missing?) — skipping regression check." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          set +e
+          node dist/cli.js diff baseline.json candidate.json --format json > diff.json
+          DIFF_EXIT=$?
+          node dist/cli.js diff baseline.json candidate.json > diff.txt
+          set -e
+
+          {
+            echo "## Eval regression check"
+            echo
+            echo '```'
+            cat diff.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$DIFF_EXIT"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-pr-${{ github.event.pull_request.number }}
+          path: |
+            baseline.json
+            candidate.json
+            diff.json
+          if-no-files-found: ignore
