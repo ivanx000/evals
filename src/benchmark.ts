@@ -14,6 +14,7 @@ import {
   type CalibrationResult,
   type RegressionInfo,
 } from "./benchmark-types.js";
+import { makeBenchmarkStore } from "./stores/benchmark/index.js";
 
 // ─── Benchmark spec loading ────────────────────────────────────────────────────
 
@@ -150,29 +151,23 @@ export function computeCalibration(
 
 // ─── Regression detection ─────────────────────────────────────────────────────
 
-export function findPreviousReport(
+export async function findPreviousReport(
   reportsDir: string,
   benchmarkName: string,
   model: string,
   currentRunId: string
-): BenchmarkReport | null {
-  const dir = path.join(reportsDir, slugify(benchmarkName));
-  if (!fs.existsSync(dir)) return null;
+): Promise<BenchmarkReport | null> {
+  const store = makeBenchmarkStore(reportsDir);
+  const ids = await store.list(benchmarkName);
 
-  const files = fs
-    .readdirSync(dir)
-    .filter((f) => f.endsWith(".json"))
-    .sort()
-    .reverse();
-
-  for (const f of files) {
+  for (const id of [...ids].reverse()) {
     try {
-      const data = JSON.parse(fs.readFileSync(path.join(dir, f), "utf-8")) as BenchmarkReport;
+      const data = await store.load(id);
       if (data.run_id !== currentRunId && data.model === model) {
         return data;
       }
     } catch {
-      // skip malformed files
+      // skip malformed/unreadable reports
     }
   }
   return null;
@@ -221,10 +216,6 @@ export interface BenchmarkRunOptions {
   reportsDir?: string;
   regressionThreshold?: number;
   onTaskResult?: (taskId: string, passed: boolean, index: number, total: number) => void;
-}
-
-function slugify(s: string): string {
-  return s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 }
 
 export async function runBenchmark(
@@ -332,7 +323,7 @@ export async function runBenchmark(
   };
 
   // Regression detection
-  const prevReport = findPreviousReport(reportsDir, spec.name, model, runId);
+  const prevReport = await findPreviousReport(reportsDir, spec.name, model, runId);
   if (prevReport) {
     report.regression = computeRegression(prevReport, report, regressionThreshold);
   }
@@ -342,48 +333,26 @@ export async function runBenchmark(
 
 // ─── Report persistence ────────────────────────────────────────────────────────
 
-export function saveBenchmarkReportJson(report: BenchmarkReport, reportsDir: string): string {
-  const dir = path.join(reportsDir, slugify(report.benchmark_name));
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-  const ts = report.timestamp.replace(/[:.]/g, "-");
-  const modelSlug = report.model.replace(/\//g, "-");
-  const filename = `${ts}-${modelSlug}.json`;
-  const filePath = path.join(dir, filename);
-  fs.writeFileSync(filePath, JSON.stringify(report, null, 2));
-  return filePath;
+export async function saveBenchmarkReportJson(
+  report: BenchmarkReport,
+  reportsDir: string
+): Promise<string> {
+  return makeBenchmarkStore(reportsDir).save(report);
 }
 
-export function listBenchmarkReports(
+export async function listBenchmarkReports(
   reportsDir: string,
   benchmarkFilter?: string
-): BenchmarkReport[] {
-  if (!fs.existsSync(reportsDir)) return [];
-
-  const dirs = fs.readdirSync(reportsDir).filter((d) => {
-    const full = path.join(reportsDir, d);
-    return fs.statSync(full).isDirectory();
-  });
+): Promise<BenchmarkReport[]> {
+  const store = makeBenchmarkStore(reportsDir);
+  const ids = await store.list(benchmarkFilter);
 
   const reports: BenchmarkReport[] = [];
-
-  for (const d of dirs) {
-    if (benchmarkFilter && !d.includes(slugify(benchmarkFilter))) continue;
-    const dir = path.join(reportsDir, d);
-    const files = fs
-      .readdirSync(dir)
-      .filter((f) => f.endsWith(".json"))
-      .sort();
-
-    for (const f of files) {
-      try {
-        const data = JSON.parse(
-          fs.readFileSync(path.join(dir, f), "utf-8")
-        ) as BenchmarkReport;
-        reports.push(data);
-      } catch {
-        // skip malformed
-      }
+  for (const id of ids) {
+    try {
+      reports.push(await store.load(id));
+    } catch {
+      // skip malformed/unreadable reports
     }
   }
 

@@ -1,6 +1,5 @@
-import * as fs from "fs";
-import * as path from "path";
 import type { BenchmarkReport, BenchmarkSummary } from "./benchmark-types.js";
+import { makeBenchmarkStore } from "./stores/benchmark/index.js";
 
 // ─── Terminal colors ───────────────────────────────────────────────────────────
 
@@ -304,20 +303,11 @@ export function generateMarkdownReport(report: BenchmarkReport): string {
   return lines.join("\n");
 }
 
-export function saveBenchmarkReportMarkdown(
+export async function saveBenchmarkReportMarkdown(
   report: BenchmarkReport,
   reportsDir: string
-): string {
-  const benchSlug = report.benchmark_name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  const dir = path.join(reportsDir, benchSlug);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-  const ts = report.timestamp.replace(/[:.]/g, "-");
-  const modelSlug = report.model.replace(/\//g, "-");
-  const filename = `${ts}-${modelSlug}.md`;
-  const filePath = path.join(dir, filename);
-  fs.writeFileSync(filePath, generateMarkdownReport(report));
-  return filePath;
+): Promise<string> {
+  return makeBenchmarkStore(reportsDir).saveMarkdown(report, generateMarkdownReport(report));
 }
 
 // ─── Terminal report list ──────────────────────────────────────────────────────
