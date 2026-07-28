@@ -28,6 +28,7 @@ graders/
   ├── index.ts      ← runGraders() dispatcher + plugin fallback
   ├── registry.ts   ← registerGrader() / getGrader() registry
   ├── types.ts      ← Grader interface
+  ├── utils.ts      ← shared extractJson() (markdown-fence stripping)
   ├── exact_match.ts
   ├── contains.ts
   ├── max_words.ts
@@ -35,7 +36,9 @@ graders/
   ├── llm_judge.ts
   ├── code_execution.ts
   ├── numeric_tolerance.ts
-  └── calibration.ts
+  ├── calibration.ts
+  ├── json_schema.ts
+  └── json_path.ts
 
 stores/
   ├── types.ts      ← ResultsStore interface (save/list/load)

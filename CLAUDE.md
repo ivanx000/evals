@@ -65,7 +65,7 @@ Fires after edits to these paths and prints a warning to Claude's context:
 |---|---|
 | `src/graders/*` | Update `docs/graders.md` + check `src/types.ts` Zod schema |
 | `src/providers/*` | Update `docs/providers.md` (config options, models, pricing) |
-| `src/cli.ts` | Update `docs/getting-started.md` if commands/flags changed |
+| `src/cli.ts` | Update `docs/getting-started.md` if commands/flags changed, and check the README.md command table is still accurate |
 | `CLAUDE.md` | No reminder (self-contained) |
 
 ### Hook 4 — Bash command logger (PreToolUse: Bash)
@@ -108,6 +108,7 @@ npm run lint       # eslint src --ext .ts
 npm run lint:fix   # eslint src --ext .ts --fix
 npm test           # vitest run --reporter=verbose
 npm run test:watch # vitest (interactive watch mode)
+npm run test:coverage # vitest run --coverage
 
 # Dashboard
 npm run dashboard:dev          # concurrently: Express API (3000) + Vite UI (5173)
@@ -126,6 +127,14 @@ REST API endpoints served by Express:
 - `GET /api/runs/:id` — full run result JSON
 - `GET /api/compare?runIds=id1,id2` — merged case comparison
 - `GET /api/diff?baseline=id1&candidate=id2` — regression diff between two runs
+- `GET /api/benchmarks` — list saved benchmark reports as summaries (optional `?benchmark=<name>` filter)
+- `GET /api/benchmarks/:id` — full `BenchmarkReport` JSON, matched by `run_id`
+
+`makeApiHandlers(resultsDir, reportsDir?)` in `src/dashboard/api.ts` resolves
+`reportsDir` from an explicit arg, else a `reports/` sibling of `resultsDir`
+— but only when `resultsDir` is a local path; a remote (`s3://`/`gs://`)
+`resultsDir` falls back to the plain `./reports` default instead of
+computing a nonsensical sibling path.
 
 In development, Vite proxies `/api/*` to Express (`vite.config.ts`).
 In production, Express serves `dashboard-ui/dist/` as static files.
@@ -154,6 +163,68 @@ See `docs/dashboard.md` for full reference.
   Plugins are cached per process via `pluginCache` in `src/graders/index.ts`. Call
   `resetPluginCache()` in tests that need a fresh plugin state. Plugin errors are isolated —
   they return `{ passed: false, error: "..." }` and never crash the runner.
+
+## Later grader additions
+
+`numeric_tolerance` (relative-error tolerance on the last number extracted from
+free-text output), `calibration` (parses a structured `ANSWER:`/`CONFIDENCE:`
+block, attaches `{ answer, expected, correct, confidence }` to
+`GraderResult.metadata` for Brier-score analysis), `json_schema` (AJV
+validation against a JSON Schema, with `extract_json` fence-stripping), and
+`json_path` (JSONPath extraction + `equals`/`gt`/`gte`/`lt`/`lte`/`contains`
+condition) — see `docs/graders.md`.
+
+## Remote storage (results & benchmark reports)
+
+- **`ResultsStore`** (`src/stores/types.ts`) — `save(result)`/`list()`/`load(id)`.
+  `makeResultsStore(resultsDir)` (`src/stores/index.ts`) dispatches on the
+  `results_dir` string's scheme (`s3://`, `gs://`, else local path) to
+  `LocalResultsStore`/`S3ResultsStore`/`GCSResultsStore`. `saveResult`/
+  `listResults`/`loadResult` in `runner.ts` are thin async wrappers. `list()`/
+  `save()` return fully-qualified ids; `load(id)` re-parses bucket+key from the
+  id itself, so it's self-sufficient regardless of which store produced it.
+
+- **`BenchmarkReportStore`** (`src/stores/benchmark/types.ts`) — same shape
+  plus two extensions: `list(benchmarkName?)` scopes the listing to one
+  benchmark's subdirectory/prefix (regression detection only ever needs one
+  benchmark's history, so this avoids scanning every report ever saved), and
+  `saveMarkdown(report, markdown)` persists the human-readable `.md` twin
+  through the same backend. `makeBenchmarkStore(reportsDir)`
+  (`src/stores/benchmark/index.ts`) dispatches the same way. Reports nest
+  under a slugified-benchmark-name subdirectory/key-prefix on every backend.
+
+- **Shared helpers.** `parseBucketUri()` (`src/stores/uri.ts`) is shared by
+  both dispatchers. The S3/GCS lazy SDK loaders and error formatters
+  (`loadAwsSdk`/`formatS3Error` in `stores/s3.ts`,
+  `loadGcsSdk`/`formatGcsError` in `stores/gcs.ts`) are exported and reused by
+  `stores/benchmark/{s3,gcs}.ts` rather than duplicated.
+
+- **Cloud SDKs are optional peer deps** (`@aws-sdk/client-s3`,
+  `@google-cloud/storage`), lazy-`import()`ed only when a remote URI is
+  actually used, for both stores. Missing-credential/bucket errors are
+  formatted into clear messages, never raw SDK stack traces.
+
+- **CLI path handling.** `results_dir`/`reports_dir` can be `s3://`/`gs://` —
+  `path.resolve()` would mangle those (treats them as a relative path
+  segment). `resolveStorageLocation()` in `cli.ts` passes remote URIs through
+  unchanged and only resolves local paths to absolute.
+
+See `docs/results-storage.md` and `docs/benchmark-storage.md`.
+
+## Domain benchmarks
+
+`evals benchmark run <name>` (`src/benchmark.ts`) runs
+`benchmarks/<name>/tasks.yaml` (schema in `src/benchmark-types.ts`) by
+converting each task to a regular `EvalCase` via `runSuite()`, then computes
+accuracy, by-category/by-difficulty breakdowns, an optional calibration Brier
+score (`computeCalibration()`, only over `calibration`-graded tasks), and
+regression vs. the most recent previous report for the same benchmark **and**
+model (`findPreviousReport()`, via `BenchmarkReportStore`). `--regression-threshold`
+(default 5 percentage points) controls when `regression.threshold_exceeded`
+(and thus a non-zero exit code) is set. `evals benchmark list` and the
+dashboard's `/api/benchmarks` both go through `listBenchmarkReports()`. This
+is distinct from `evals diff`, which compares two arbitrary saved eval-run
+JSON files. See `docs/benchmarks.md`.
 
 ## Key design decisions (hardening phase)
 
@@ -237,10 +308,19 @@ registerGrader({ type: "my_grader", async grade(output, criteria) { ... } });
 
 ### Adding a CLI command
 1. Add `.command()` to `src/cli.ts`
-2. Update `docs/getting-started.md`
+2. Update `docs/getting-started.md`, and the README.md command table if it's a top-level command
 
 ### Adding a custom grader plugin (user-land)
 1. Create `graders/<name>.js` in the project root
 2. Export `{ type, run }` as the default export
 3. Use the grader type in YAML criteria — no other changes needed
 4. See `docs/graders.md` and `examples/plugins/sentiment_grader.js` for the full interface
+
+### Adding a results/report storage backend
+1. Create `src/stores/<name>.ts` (or `src/stores/benchmark/<name>.ts` for
+   benchmark reports) implementing `ResultsStore`/`BenchmarkReportStore`
+   — lazy-`import()` the SDK, throw clear errors on missing credentials/buckets
+2. Register the URI scheme in `makeResultsStore()`/`makeBenchmarkStore()`
+3. Add the SDK as an optional peer dependency in `package.json`
+4. Add unit tests mocking the SDK via `vi.mock()` (see `tests/stores/s3.test.ts`)
+5. Update `docs/results-storage.md` / `docs/benchmark-storage.md`
