@@ -461,27 +461,18 @@ export async function runSuite(
 }
 
 // ─── Result persistence ───────────────────────────────────────────────────────
+//
+// `resultsDir` is either a local directory path or a remote URI
+// (`s3://bucket/prefix`, `gs://bucket/prefix`) — see src/stores/index.ts.
 
-export function saveResult(result: RunResult, resultsDir: string): string {
-  if (!fs.existsSync(resultsDir)) {
-    fs.mkdirSync(resultsDir, { recursive: true });
-  }
-  const ts = result.timestamp.replace(/[:.]/g, "-");
-  const filename = `${ts}_${result.suite_name.replace(/\s+/g, "_").toLowerCase()}.json`;
-  const filePath = path.join(resultsDir, filename);
-  fs.writeFileSync(filePath, JSON.stringify(result, null, 2));
-  return filePath;
+export async function saveResult(result: RunResult, resultsDir: string): Promise<string> {
+  return makeResultsStore(resultsDir).save(result);
 }
 
-export function listResults(resultsDir: string): string[] {
-  if (!fs.existsSync(resultsDir)) return [];
-  return fs
-    .readdirSync(resultsDir)
-    .filter((f) => f.endsWith(".json"))
-    .map((f) => path.join(resultsDir, f))
-    .sort();
+export async function listResults(resultsDir: string): Promise<string[]> {
+  return makeResultsStore(resultsDir).list();
 }
 
-export function loadResult(filePath: string): RunResult {
-  return JSON.parse(fs.readFileSync(filePath, "utf-8")) as RunResult;
+export async function loadResult(id: string): Promise<RunResult> {
+  return makeResultsStore(id).load(id);
 }

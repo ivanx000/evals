@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as path from "path";
 import type { Request, Response } from "express";
 import type { RunResult } from "../types.js";
@@ -6,6 +5,7 @@ import { computeDiff } from "../diff.js";
 import { listBenchmarkReports } from "../benchmark.js";
 import { toSummary as toBenchmarkSummary } from "../benchmark-reporter.js";
 import type { BenchmarkReport } from "../benchmark-types.js";
+import { makeResultsStore } from "../stores/index.js";
 
 interface RunSummary {
   id: string;

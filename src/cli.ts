@@ -103,6 +103,14 @@ function parseProviderModel(
   return { provider: fallbackProvider, model: spec };
 }
 
+// Resolves a results location for `evals diff` — a plain filesystem path is
+// resolved relative to cwd like any other CLI arg, but an s3:// or gs:// URI
+// must pass through untouched (path.resolve would mangle it).
+function resolveResultLocation(location: string): string {
+  if (location.startsWith("s3://") || location.startsWith("gs://")) return location;
+  return path.resolve(location);
+}
+
 // ── eval init ─────────────────────────────────────────────────────────────────
 
 program
@@ -306,7 +314,7 @@ program
           fs.writeFileSync(opts.output, JSON.stringify(result, null, 2));
           console.log(`Results saved → ${opts.output}`);
         } else {
-          const savedPath = saveResult(result, config.results_dir ?? "./results");
+          const savedPath = await saveResult(result, config.results_dir ?? "./results");
           console.log(`Results saved → ${savedPath}`);
         }
 
@@ -403,7 +411,7 @@ program
             if (i === total - 1) console.log("");
           },
         });
-        saveResult(result, config.results_dir ?? "./results");
+        await saveResult(result, config.results_dir ?? "./results");
         results.push(result);
       }
 
@@ -422,21 +430,21 @@ program
   .option("-n, --last <n>", "Show last N results", "10")
   .option("--suite <name>", "Filter by suite name (partial match)")
   .option("-c, --config <path>", "Path to .evalrc.json config file")
-  .action((opts: {
+  .action(async (opts: {
     last: string;
     suite?: string;
     config?: string;
   }) => {
     const config = loadConfig(opts.config);
     const resultsDir = config.results_dir ?? "./results";
-    const files = listResults(resultsDir);
+    const files = await listResults(resultsDir);
 
     if (files.length === 0) {
       console.log("\nNo results found. Run 'eval run <suite.yaml>' first.");
       return;
     }
 
-    let results = files.map(loadResult);
+    let results = await Promise.all(files.map(loadResult));
 
     if (opts.suite) {
       results = results.filter((r) =>
@@ -489,10 +497,10 @@ program
   .command("diff <baseline> <candidate>")
   .description("Compare two result files and report regressions and improvements")
   .option("--format <fmt>", "Output format: table (default) or json", "table")
-  .action((baselinePath: string, candidatePath: string, opts: { format: string }) => {
+  .action(async (baselinePath: string, candidatePath: string, opts: { format: string }) => {
     try {
-      const baseline = loadResult(path.resolve(baselinePath));
-      const candidate = loadResult(path.resolve(candidatePath));
+      const baseline = await loadResult(resolveResultLocation(baselinePath));
+      const candidate = await loadResult(resolveResultLocation(candidatePath));
       const diff = computeDiff(baseline, candidate);
 
       if (opts.format === "json") {
@@ -734,7 +742,7 @@ program
         fs.writeFileSync(opts.output, JSON.stringify(result, null, 2));
         console.log(`Results saved → ${opts.output}`);
       } else {
-        const savedPath = saveResult(result, config.results_dir ?? "./results");
+        const savedPath = await saveResult(result, config.results_dir ?? "./results");
         console.log(`Results saved → ${savedPath}`);
       }
 
