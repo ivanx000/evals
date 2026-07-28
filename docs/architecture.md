@@ -207,6 +207,26 @@ calling the provider mid-run (not compatible with `--batch`).
 compares per-grader `passed` flags, and reports regressions (pass→fail) and
 improvements (fail→pass). Exit code 1 on any regression.
 
+## Suite inheritance
+
+A suite's `extends: ./base.yaml` field (`loadSuite()` in `runner.ts`) resolves
+relative to the file that declares it, merges top-level fields (child
+overrides base), and prepends base cases before child cases. Multi-level
+chains are supported; a circular chain throws immediately with the cycle
+shown. See [getting-started.md](./getting-started.md#suite-inheritance).
+
+## Domain benchmarks
+
+`evals benchmark run <name>` (`benchmark.ts`) runs a fixed, versioned task set
+from `benchmarks/<name>/tasks.yaml` (schema in `benchmark-types.ts`),
+converting each task to a regular `EvalCase` and running it through the same
+`runSuite()` path as `evals run`. On top of the standard run result it
+computes by-category/by-difficulty accuracy breakdowns, an optional
+calibration Brier score, and regression detection against the most recent
+previous report for the same benchmark and model — a separate mechanism from
+`evals diff` above, scoped to one benchmark's report history rather than two
+arbitrary files. See [benchmarks.md](./benchmarks.md).
+
 ## Dashboard
 
 `evals dashboard` starts Express at `src/dashboard/server.ts`. REST endpoints:
@@ -214,6 +234,8 @@ improvements (fail→pass). Exit code 1 on any regression.
 - `GET /api/runs/:id` — full run result
 - `GET /api/compare?runIds=id1,id2` — merged case comparison
 - `GET /api/diff?baseline=id1&candidate=id2` — regression diff
+- `GET /api/benchmarks` — list saved benchmark reports as summaries
+- `GET /api/benchmarks/:id` — full benchmark report
 
 The React UI (`dashboard-ui/`) is served as static files in production or proxied
 from Vite's dev server in development.

@@ -114,6 +114,7 @@ evals run examples/summarization.yaml
 | `-w, --watch` | Re-run automatically when the YAML file is saved |
 | `--no-cache` | Skip the semantic cache and always call the API |
 | `-v, --verbose` | Show full model outputs and LLM judge reasoning |
+| `-s, --stream` | Stream token-by-token output to stderr as each case runs (single-turn and multi-turn) |
 | `-o, --output <path>` | Override the results save path (default: `./results/<timestamp>.json`) |
 | `--json <path>` | Also write the raw JSON result to a second path |
 | `--filter <substring>` | Run only cases whose `id` or tag contains the substring |
@@ -233,6 +234,39 @@ evals report --suite summarization
 |---|---|
 | `-n, --last <n>` | Show last N results (default: 10) |
 | `--suite <name>` | Filter by suite name (partial match) |
+
+### `evals diff <baseline.json> <candidate.json>`
+
+Compare two saved result files and report regressions (pass → fail) and improvements (fail → pass). Exits with code 1 if any regressions are found.
+
+```bash
+evals diff results/baseline.json results/candidate.json
+evals diff results/baseline.json results/candidate.json --format json
+```
+
+Full matching logic, JSON shape, and the dashboard's Regressions tab: see [regression-detection.md](./regression-detection.md).
+
+### `evals dashboard`
+
+Spin up a local web dashboard (Express + React) to visualize and compare eval runs and benchmark reports.
+
+```bash
+evals dashboard
+evals dashboard --port 8080 --results-dir ./my-results --reports-dir ./my-reports
+```
+
+Full flag reference, pages, and REST API: see [dashboard.md](./dashboard.md).
+
+### `evals benchmark run <name>` / `evals benchmark list`
+
+Run a fixed, versioned domain benchmark (`benchmarks/<name>/tasks.yaml`) — accuracy, category/difficulty breakdowns, calibration (Brier score), and automatic regression detection against the previous run for the same benchmark and model.
+
+```bash
+evals benchmark run financial-reasoning
+evals benchmark list --benchmark financial-reasoning
+```
+
+`tasks.yaml` format, calibration scoring, and full flag reference: see [benchmarks.md](./benchmarks.md).
 
 ## Writing your first suite
 

@@ -1,6 +1,6 @@
 # Dashboard
 
-The `evals dashboard` command spins up a local web app that reads from your `results/` folder and lets you explore eval runs visually.
+The `evals dashboard` command spins up a local web app that reads from your `results/` folder and lets you explore eval runs visually, plus saved benchmark reports from `reports/`.
 
 ## Starting the dashboard
 
@@ -79,9 +79,24 @@ Select 2+ runs from the table, then see a side-by-side **ModelCompareTable**:
 - Rows where models disagree (one passes, one fails) are highlighted in yellow
 - Summary row at the bottom shows pass rate per run
 
+Two tabs: **Compare** (the table above) and **Regressions**, which picks the
+first two selected runs as baseline/candidate and renders the same data as
+`evals diff` — regressed/improved case tables plus an unchanged count — via
+`GET /api/diff`.
+
+### Benchmarks (`/benchmarks`)
+
+Lists saved benchmark reports (accuracy, model, calibration Brier score, run
+ID), newest first, with a `?benchmark=` filter. Selecting a report shows its
+full detail: by-category/by-difficulty breakdowns, a calibration scatter
+chart (confidence vs. pass/fail per task, via Recharts), regression vs. the
+previous run for that benchmark+model, and the per-task table. Backed by
+`GET /api/benchmarks` / `GET /api/benchmarks/:id` — see
+[benchmarks.md](./benchmarks.md).
+
 ## REST API
 
-The Express server exposes three endpoints:
+The Express server exposes six endpoints:
 
 ### `GET /api/runs`
 
@@ -124,6 +139,12 @@ Returns cases from multiple runs merged by `case_id`:
 ]
 ```
 
+### `GET /api/diff?baseline=id1&candidate=id2`
+
+Returns the same regression diff as `evals diff --format json` (matching
+logic in [regression-detection.md](./regression-detection.md)) between two
+runs by ID.
+
 ### `GET /api/benchmarks`
 
 Returns all saved benchmark reports as summaries (`toSummary()` in
@@ -147,12 +168,13 @@ src/dashboard/
 dashboard-ui/
 ├── src/
 │   ├── App.tsx               # BrowserRouter + Nav + Routes
-│   ├── types.ts              # Mirror of src/types.ts RunResult shape
+│   ├── types.ts              # Mirrors RunResult/BenchmarkReport/diff shapes from src/
 │   ├── hooks/useRuns.ts      # useRuns, useRun, useCompare fetch hooks
 │   ├── pages/
 │   │   ├── Overview.tsx
 │   │   ├── RunDetail.tsx
-│   │   └── Compare.tsx
+│   │   ├── Compare.tsx        # Compare + Regressions tabs
+│   │   └── Benchmarks.tsx     # list + detail, own useBenchmarks/useBenchmarkReport hooks
 │   └── components/
 │       ├── PassRateChart.tsx
 │       ├── LatencyChart.tsx

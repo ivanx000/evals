@@ -2,6 +2,11 @@
 
 `evals diff` compares two result files and tells you exactly what changed: which cases regressed (pass → fail), which improved (fail → pass), and which are new or removed.
 
+This is a separate mechanism from `evals benchmark run`'s built-in regression
+detection, which automatically compares against the previous report for the
+*same benchmark and model* on every run — no manual baseline/candidate files
+involved. See [benchmarks.md](./benchmarks.md#regression-detection).
+
 ## Workflow
 
 ```
