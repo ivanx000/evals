@@ -3,7 +3,7 @@ import type { ResultsStore } from "./types.js";
 
 // Loaded lazily so the CLI's default install never pulls in the AWS SDK —
 // only users who configure an s3:// results_dir pay for it.
-async function loadAwsSdk() {
+export async function loadAwsSdk() {
   try {
     return await import("@aws-sdk/client-s3");
   } catch {
@@ -14,7 +14,7 @@ async function loadAwsSdk() {
   }
 }
 
-function formatS3Error(err: unknown, bucket: string): Error {
+export function formatS3Error(err: unknown, bucket: string): Error {
   const e = err as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } };
   const status = e.$metadata?.httpStatusCode;
   const message = e.message ?? String(err);

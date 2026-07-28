@@ -3,7 +3,7 @@ import type { ResultsStore } from "./types.js";
 
 // Loaded lazily so the CLI's default install never pulls in the GCS client —
 // only users who configure a gs:// results_dir pay for it.
-async function loadGcsSdk() {
+export async function loadGcsSdk() {
   try {
     return await import("@google-cloud/storage");
   } catch {
@@ -14,7 +14,7 @@ async function loadGcsSdk() {
   }
 }
 
-function formatGcsError(err: unknown, bucket: string): Error {
+export function formatGcsError(err: unknown, bucket: string): Error {
   const e = err as { code?: number | string; message?: string };
   const message = e.message ?? String(err);
 
