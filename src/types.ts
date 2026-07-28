@@ -148,6 +148,7 @@ export const EvalConfigSchema = z.object({
   gemini_api_key: z.string().optional(),
   judge_model: z.string().optional().default("claude-opus-4-8"),
   results_dir: z.string().optional().default("./results"),
+  reports_dir: z.string().optional().default("./reports"),
   cache_enabled: z.boolean().optional().default(true),
 });
 

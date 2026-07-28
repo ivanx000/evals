@@ -48,6 +48,15 @@ program
   .description("evals — benchmark and compare LLMs")
   .version("0.1.0");
 
+// `results_dir`/`reports_dir` can be an s3:// or gs:// URI instead of a local
+// path — path.resolve() would mangle those (treating "s3://bucket/x" as a
+// relative path segment), so only resolve to an absolute path when it's
+// actually local.
+function resolveStorageLocation(location: string): string {
+  if (location.startsWith("s3://") || location.startsWith("gs://")) return location;
+  return path.resolve(location);
+}
+
 // ─── API key guard ────────────────────────────────────────────────────────────
 
 function checkApiKeys(suite: EvalSuite, config: EvalConfig, providerOverride?: string): void {
@@ -466,11 +475,13 @@ program
   .command("dashboard")
   .description("Spin up a local web dashboard to visualize eval results")
   .option("-p, --port <port>", "Port to listen on (default: 3000)", "3000")
-  .option("-d, --results-dir <dir>", "Results directory (default: ./results)", "./results")
+  .option("-d, --results-dir <dir>", "Results directory (default: ./results)")
+  .option("-r, --reports-dir <dir>", "Benchmark reports directory (default: ./reports)")
   .option("-c, --config <path>", "Path to .evalrc.json config file")
-  .action(async (opts: { port: string; resultsDir: string; config?: string }) => {
+  .action(async (opts: { port: string; resultsDir?: string; reportsDir?: string; config?: string }) => {
     const config = loadConfig(opts.config);
-    const resultsDir = path.resolve(opts.resultsDir ?? config.results_dir ?? "./results");
+    const resultsDir = resolveStorageLocation(opts.resultsDir ?? config.results_dir ?? "./results");
+    const reportsDir = resolveStorageLocation(opts.reportsDir ?? config.reports_dir ?? "./reports");
     const port = parseInt(opts.port, 10);
 
     const { startServer } = await import("./dashboard/server.js");
@@ -479,10 +490,11 @@ program
     const open = openModule.default;
 
     try {
-      await startServer({ port, resultsDir });
+      await startServer({ port, resultsDir, reportsDir });
       const url = `http://localhost:${port}`;
       console.log(`\nDashboard running at ${url}`);
       console.log(`Results directory: ${resultsDir}`);
+      console.log(`Reports directory: ${reportsDir}`);
       console.log("\nPress Ctrl+C to stop.\n");
       await open(url);
     } catch (err) {
@@ -595,7 +607,7 @@ benchmarkCmd
   .description("Run a benchmark suite (looks for benchmarks/<name>/tasks.yaml)")
   .option("--provider <provider>", "LLM provider (anthropic|openai|ollama|gemini)")
   .option("-m, --model <model>", "Model to benchmark")
-  .option("--report-dir <dir>", "Directory to save reports (default: ./reports)", "./reports")
+  .option("--report-dir <dir>", "Directory to save reports (default: ./reports)")
   .option("--regression-threshold <pct>", "Accuracy drop % that flags a regression (default: 5)", "5")
   .option("--concurrency <n>", "Run N tasks in parallel (default: 1)", "1")
   .option("--timeout <ms>", "Per-task timeout in milliseconds (default: 60000)", "60000")
@@ -606,7 +618,7 @@ benchmarkCmd
     opts: {
       provider?: string;
       model?: string;
-      reportDir: string;
+      reportDir?: string;
       regressionThreshold: string;
       concurrency: string;
       timeout: string;
@@ -644,7 +656,7 @@ benchmarkCmd
       process.exit(1);
     }
 
-    const reportDir = path.resolve(opts.reportDir);
+    const reportDir = resolveStorageLocation(opts.reportDir ?? config.reports_dir ?? "./reports");
 
     console.log(`\nRunning benchmark: ${name}`);
     console.log(`  Model:    ${model} / ${provider}`);
@@ -665,8 +677,8 @@ benchmarkCmd
 
       printBenchmarkSummary(report);
 
-      const jsonPath = saveBenchmarkReportJson(report, reportDir);
-      const mdPath = saveBenchmarkReportMarkdown(report, reportDir);
+      const jsonPath = await saveBenchmarkReportJson(report, reportDir);
+      const mdPath = await saveBenchmarkReportMarkdown(report, reportDir);
       console.log(`Reports saved:`);
       console.log(`  JSON: ${jsonPath}`);
       console.log(`  MD:   ${mdPath}\n`);
@@ -683,11 +695,13 @@ benchmarkCmd
 benchmarkCmd
   .command("list")
   .description("List saved benchmark reports")
-  .option("--report-dir <dir>", "Directory to scan for reports (default: ./reports)", "./reports")
+  .option("--report-dir <dir>", "Directory to scan for reports (default: ./reports)")
   .option("--benchmark <name>", "Filter by benchmark name")
-  .action((opts: { reportDir: string; benchmark?: string }) => {
-    const reportDir = path.resolve(opts.reportDir);
-    const reports = listBenchmarkReports(reportDir, opts.benchmark);
+  .option("-c, --config <path>", "Path to .evalrc.json config file")
+  .action(async (opts: { reportDir?: string; benchmark?: string; config?: string }) => {
+    const config = loadConfig(opts.config);
+    const reportDir = resolveStorageLocation(opts.reportDir ?? config.reports_dir ?? "./reports");
+    const reports = await listBenchmarkReports(reportDir, opts.benchmark);
     printBenchmarkList(reports);
   });
 

@@ -45,8 +45,18 @@ function toSummary(run: RunResult): RunSummary {
   };
 }
 
+function isRemoteUri(location: string): boolean {
+  return location.startsWith("s3://") || location.startsWith("gs://");
+}
+
 export function makeApiHandlers(resultsDir: string, reportsDir?: string) {
-  const benchmarksDir = reportsDir ?? path.resolve(path.dirname(resultsDir), "reports");
+  // `resultsDir`'s sibling "reports" directory is only a sensible default when
+  // resultsDir is itself a local path — deriving a path.dirname() sibling of an
+  // s3://…/gs://… URI would produce garbage. Fall back to the plain local
+  // default instead; callers who want reports on the same remote backend
+  // should pass reportsDir explicitly (e.g. via --reports-dir / reports_dir).
+  const benchmarksDir =
+    reportsDir ?? (isRemoteUri(resultsDir) ? "./reports" : path.resolve(path.dirname(resultsDir), "reports"));
   return {
     async listRuns(req: Request, res: Response): Promise<void> {
       try {
