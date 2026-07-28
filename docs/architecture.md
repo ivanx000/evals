@@ -36,6 +36,13 @@ graders/
   ├── code_execution.ts
   ├── numeric_tolerance.ts
   └── calibration.ts
+
+stores/
+  ├── types.ts      ← ResultsStore interface (save/list/load)
+  ├── index.ts      ← makeResultsStore() dispatcher, parses results_dir scheme
+  ├── local.ts      ← LocalResultsStore (fs, default)
+  ├── s3.ts         ← S3ResultsStore (@aws-sdk/client-s3, lazy-loaded)
+  └── gcs.ts        ← GCSResultsStore (@google-cloud/storage, lazy-loaded)
 ```
 
 Supporting modules:
@@ -43,6 +50,12 @@ Supporting modules:
 - `types.ts` — all Zod schemas and TypeScript interfaces (`EvalSuite`, `CaseResult`, `RunResult`, pricing tables, …)
 - `config.ts` — loads `.evalrc.json` / env vars into `EvalConfig`
 - `cache.ts` — SHA-256 keyed semantic cache on disk (`.eval-cache/`)
+
+Results persistence (`saveResult`/`listResults`/`loadResult` in `runner.ts`)
+goes through `stores/` the same way provider calls go through `providers/` —
+`makeResultsStore(resultsDir)` picks `LocalResultsStore`, `S3ResultsStore`,
+or `GCSResultsStore` based on the `results_dir` string (local path,
+`s3://…`, or `gs://…`). See [results-storage.md](./results-storage.md).
 
 Dashboard UI is a separate Vite + React app in `dashboard-ui/`, served as static
 files by Express in production.

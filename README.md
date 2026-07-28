@@ -225,6 +225,10 @@ API keys can be set in the config file or via environment variables — env vars
 | `GEMINI_API_KEY` | `gemini_api_key` |
 | `OLLAMA_HOST` | *(env only)* |
 
+`results_dir` also accepts `s3://bucket/prefix` or `gs://bucket/prefix` to
+store run results in S3/GCS instead of on disk — see
+[docs/results-storage.md](./docs/results-storage.md).
+
 ## Semantic Cache
 
 All `(model, prompt, system_prompt, temperature, max_tokens)` tuples are cached in `.eval-cache/` as SHA-256-keyed JSON files. Subsequent runs with identical inputs return the cached response instantly at zero cost. Use `--no-cache` to force a fresh call.

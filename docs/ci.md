@@ -27,20 +27,33 @@ evals run suite.yaml --output candidate.json
 ### 2. Get a baseline file onto disk
 
 `evals diff` just needs two JSON files — how you produce `baseline.json` is a
-CI-plumbing choice, not an `evals` feature. Two common approaches:
+CI-plumbing choice, not an `evals` feature. Three common approaches:
 
 **A. Cache/artifact from the last main-branch run** (used in the example
 workflow below). On every push to `main`, run the suite and cache the result;
 PR builds restore that cache before diffing. No extra files checked into the
-repo, and the baseline tracks whatever's actually on `main` right now.
+repo, and the baseline tracks whatever's actually on `main` right now. Simple,
+but `actions/cache` evicts entries after 7 days of inactivity and is capped
+at 10GB per repo — fine for a demo, not durable for a long-lived pipeline.
 
 **B. A committed fixture.** Check a known-good `results/baseline.json` into
 the repo and update it deliberately (e.g. in the same PR that changes a
 prompt) when you want to move the goalposts. Simpler to reason about, but the
 baseline can drift out of sync with `main` if people forget to update it.
 
+**C. Remote result storage (S3/GCS).** Point `results_dir` at an
+`s3://bucket/prefix` or `gs://bucket/prefix` URI (see
+[results-storage.md](./results-storage.md)) so `evals run` on `main` writes
+the baseline straight to a bucket instead of a GitHub Actions cache entry.
+`evals diff` accepts `s3://`/`gs://` URIs directly, so the regression job can
+diff against the bucket without a restore step. Durable (no eviction, no size
+cap tied to the repo), and shareable across CI providers or local runs — the
+right choice once A's 7-day/10GB ceiling becomes a real constraint rather
+than a demo caveat.
+
 Start with A unless you specifically want the baseline to be reviewable in
-diffs — then use B.
+diffs (then use B) or need it to outlive `actions/cache`'s retention limits
+(then use C).
 
 ### 3. Diff and fail the build
 

@@ -30,9 +30,9 @@
 
 ## Phase 4 additions ✅
 - **YAML suite inheritance** — `extends: ./base.yaml` in a child suite inherits top-level fields (child overrides) and prepends base cases before child cases; circular chains throw immediately
+- **Streaming output support** — `--stream` prints token-by-token output to stderr as each case runs (single-turn and multi-turn)
+- **Remote result storage (S3, GCS)** — `results_dir` accepts `s3://bucket/prefix` and `gs://bucket/prefix` URIs alongside local paths; `ResultsStore` interface (`src/stores/`) with `LocalResultsStore`/`S3ResultsStore`/`GCSResultsStore`, mirroring the provider-per-backend pattern; `evals diff` accepts remote URIs directly; cloud SDKs are optional peer deps, lazy-loaded only when used. See [results-storage.md](./results-storage.md)
 
 ## Future Ideas
-- Streaming output support
 - Fine-grained retry budgets per case
-- Remote result storage (S3, GCS)
 - YAML templating
