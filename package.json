@@ -32,7 +32,21 @@
     "openai": "^4.85.0",
     "zod": "^3.23.8"
   },
+  "peerDependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@google-cloud/storage": "^7.11.0"
+  },
+  "peerDependenciesMeta": {
+    "@aws-sdk/client-s3": {
+      "optional": true
+    },
+    "@google-cloud/storage": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1096.0",
+    "@google-cloud/storage": "^7.21.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/js-yaml": "^4.0.9",

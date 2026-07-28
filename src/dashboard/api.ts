@@ -20,16 +20,10 @@ interface RunSummary {
   models: string[];
 }
 
-function loadAllRuns(resultsDir: string): RunResult[] {
-  if (!fs.existsSync(resultsDir)) return [];
-  const files = fs
-    .readdirSync(resultsDir)
-    .filter((f) => f.endsWith(".json"))
-    .sort();
-  return files.map((f) => {
-    const raw = fs.readFileSync(path.join(resultsDir, f), "utf-8");
-    return JSON.parse(raw) as RunResult;
-  });
+async function loadAllRuns(resultsDir: string): Promise<RunResult[]> {
+  const store = makeResultsStore(resultsDir);
+  const ids = await store.list();
+  return Promise.all(ids.map((id) => store.load(id)));
 }
 
 function toSummary(run: RunResult): RunSummary {
@@ -54,9 +48,9 @@ function toSummary(run: RunResult): RunSummary {
 export function makeApiHandlers(resultsDir: string, reportsDir?: string) {
   const benchmarksDir = reportsDir ?? path.resolve(path.dirname(resultsDir), "reports");
   return {
-    listRuns(req: Request, res: Response): void {
+    async listRuns(req: Request, res: Response): Promise<void> {
       try {
-        const runs = loadAllRuns(resultsDir);
+        const runs = await loadAllRuns(resultsDir);
         const summaries = runs
           .map(toSummary)
           .sort(
@@ -69,10 +63,10 @@ export function makeApiHandlers(resultsDir: string, reportsDir?: string) {
       }
     },
 
-    getRun(req: Request, res: Response): void {
+    async getRun(req: Request, res: Response): Promise<void> {
       try {
         const { id } = req.params;
-        const runs = loadAllRuns(resultsDir);
+        const runs = await loadAllRuns(resultsDir);
         const run = runs.find((r) => r.run_id === id);
         if (!run) {
           res.status(404).json({ error: "Run not found" });
@@ -84,7 +78,7 @@ export function makeApiHandlers(resultsDir: string, reportsDir?: string) {
       }
     },
 
-    compareRuns(req: Request, res: Response): void {
+    async compareRuns(req: Request, res: Response): Promise<void> {
       try {
         const runIds = String(req.query.runIds ?? "")
           .split(",")
@@ -94,7 +88,7 @@ export function makeApiHandlers(resultsDir: string, reportsDir?: string) {
           res.status(400).json({ error: "Provide at least 2 runIds" });
           return;
         }
-        const allRuns = loadAllRuns(resultsDir);
+        const allRuns = await loadAllRuns(resultsDir);
         const selected = runIds
           .map((id) => allRuns.find((r) => r.run_id === id))
           .filter((r): r is RunResult => r !== undefined);
@@ -129,7 +123,7 @@ export function makeApiHandlers(resultsDir: string, reportsDir?: string) {
       }
     },
 
-    diffRuns(req: Request, res: Response): void {
+    async diffRuns(req: Request, res: Response): Promise<void> {
       try {
         const baseline = String(req.query.baseline ?? "").trim();
         const candidate = String(req.query.candidate ?? "").trim();
@@ -137,7 +131,7 @@ export function makeApiHandlers(resultsDir: string, reportsDir?: string) {
           res.status(400).json({ error: "Provide baseline and candidate run IDs" });
           return;
         }
-        const allRuns = loadAllRuns(resultsDir);
+        const allRuns = await loadAllRuns(resultsDir);
         const baselineRun = allRuns.find((r) => r.run_id === baseline);
         const candidateRun = allRuns.find((r) => r.run_id === candidate);
         if (!baselineRun) {
