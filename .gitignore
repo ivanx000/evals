@@ -2,6 +2,7 @@ node_modules/
 dist/
 .eval-cache/
 results/
+reports/
 *.env
 .env
 .evalrc.json
