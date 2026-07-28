@@ -19,6 +19,7 @@ import { GeminiProvider } from "./providers/gemini.js";
 import { runGraders } from "./graders/index.js";
 import { cacheGet, cacheSet } from "./cache.js";
 import { expandDataset } from "./dataset.js";
+import { makeResultsStore } from "./stores/index.js";
 
 export interface RunOptions {
   model?: string;
