@@ -158,20 +158,20 @@ export function makeApiHandlers(resultsDir: string, reportsDir?: string) {
       }
     },
 
-    listBenchmarks(req: Request, res: Response): void {
+    async listBenchmarks(req: Request, res: Response): Promise<void> {
       try {
         const benchmark = req.query.benchmark ? String(req.query.benchmark) : undefined;
-        const reports = listBenchmarkReports(benchmarksDir, benchmark);
+        const reports = await listBenchmarkReports(benchmarksDir, benchmark);
         res.json(reports.map(toBenchmarkSummary));
       } catch (err) {
         res.status(500).json({ error: (err as Error).message });
       }
     },
 
-    getBenchmark(req: Request, res: Response): void {
+    async getBenchmark(req: Request, res: Response): Promise<void> {
       try {
         const { id } = req.params;
-        const reports = listBenchmarkReports(benchmarksDir);
+        const reports = await listBenchmarkReports(benchmarksDir);
         const report = reports.find((r: BenchmarkReport) => r.run_id === id);
         if (!report) {
           res.status(404).json({ error: "Benchmark report not found" });
