@@ -157,6 +157,8 @@ See `docs/dashboard.md` for full reference.
   Matches cases by `case_id`, compares per-grader results, detects regressions (pass→fail) and
   improvements (fail→pass). `--format json` for CI pipelines. Exit code 1 on any regression.
   The Compare page in the dashboard has a Regressions tab using `GET /api/diff`.
+  The dashboard also has a separate Benchmarks page (`dashboard-ui/src/pages/Benchmarks.tsx`)
+  for `evals benchmark` reports — unrelated to this diff mechanism, see "Domain benchmarks" below.
 
 - **Custom grader plugins.** `src/plugins.ts` scans `graders/` in CWD at startup, dynamically imports
   `.js`/`.mjs` files, validates the `{ type, run }` shape, checks for built-in conflicts.
