@@ -42,7 +42,10 @@ stores/
   ├── index.ts      ← makeResultsStore() dispatcher, parses results_dir scheme
   ├── local.ts      ← LocalResultsStore (fs, default)
   ├── s3.ts         ← S3ResultsStore (@aws-sdk/client-s3, lazy-loaded)
-  └── gcs.ts        ← GCSResultsStore (@google-cloud/storage, lazy-loaded)
+  ├── gcs.ts        ← GCSResultsStore (@google-cloud/storage, lazy-loaded)
+  ├── uri.ts        ← parseBucketUri(), shared with stores/benchmark/
+  └── benchmark/    ← BenchmarkReportStore: same shape + saveMarkdown() and
+                       a benchmark-name-scoped list(), see benchmark-storage.md
 ```
 
 Supporting modules:
@@ -56,6 +59,12 @@ goes through `stores/` the same way provider calls go through `providers/` —
 `makeResultsStore(resultsDir)` picks `LocalResultsStore`, `S3ResultsStore`,
 or `GCSResultsStore` based on the `results_dir` string (local path,
 `s3://…`, or `gs://…`). See [results-storage.md](./results-storage.md).
+
+Benchmark report persistence (`saveBenchmarkReportJson`,
+`saveBenchmarkReportMarkdown`, `listBenchmarkReports`, `findPreviousReport`
+in `benchmark.ts`/`benchmark-reporter.ts`) follows the identical pattern one
+level down, in `stores/benchmark/`, dispatched from the `reports_dir` string
+by `makeBenchmarkStore()`. See [benchmark-storage.md](./benchmark-storage.md).
 
 Dashboard UI is a separate Vite + React app in `dashboard-ui/`, served as static
 files by Express in production.
@@ -219,5 +228,6 @@ Unit tests live in `tests/`. Run with `npm test` (vitest).
 - `tests/plugins.test.ts` — plugin loader isolation
 - `tests/yaml-validation.test.ts` — Zod schema edge cases
 - `tests/benchmark.test.ts` — benchmark harness
+- `tests/stores/*.test.ts`, `tests/stores/benchmark/*.test.ts` — results/report stores (S3, GCS mocked via `vi.mock`)
 
 No test makes real API calls. Providers and the Anthropic SDK are mocked via `vi.mock()`.

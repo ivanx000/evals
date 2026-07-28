@@ -49,6 +49,7 @@ Copy `.evalrc.json.example` to `.evalrc.json` and adjust:
   "default_model": "claude-haiku-4-5",
   "judge_model": "claude-opus-4-8",
   "results_dir": "./results",
+  "reports_dir": "./reports",
   "cache_enabled": true
 }
 ```

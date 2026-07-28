@@ -81,3 +81,8 @@ and `save()` return fully-qualified ids (a local path or an `s3://`/`gs://`
 URI), and `load(id)` is self-sufficient: it re-parses the bucket and key out
 of the id itself, so an id from one store call always resolves correctly
 regardless of which `results_dir` produced it.
+
+Benchmark reports (`reports_dir`, separate from `results_dir`) follow the
+same pattern one level down, with a small interface extension for the
+per-benchmark-name nesting and the optional Markdown report — see
+[benchmark-storage.md](./benchmark-storage.md).

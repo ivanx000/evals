@@ -17,8 +17,14 @@ Flags:
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--port` | `3000` | Port for the Express server |
-| `--results-dir` | `./results` | Directory to scan for `*.json` result files |
+| `--results-dir` | `./results` | Eval run results — local path or `s3://`/`gs://` URI |
+| `--reports-dir` | `./reports` | Benchmark reports — local path or `s3://`/`gs://` URI |
 | `--config` | auto | Path to `.evalrc.json` |
+
+`--results-dir`/`--reports-dir` fall back to `results_dir`/`reports_dir` in
+`.evalrc.json` when omitted. The two are independent — see
+[results-storage.md](./results-storage.md) and
+[benchmark-storage.md](./benchmark-storage.md).
 
 The server opens the browser automatically. Press Ctrl+C to stop.
 
@@ -117,6 +123,17 @@ Returns cases from multiple runs merged by `case_id`:
   }
 ]
 ```
+
+### `GET /api/benchmarks`
+
+Returns all saved benchmark reports as summaries (`toSummary()` in
+`benchmark-reporter.ts`), newest first. Accepts `?benchmark=<name>` to filter
+to one benchmark.
+
+### `GET /api/benchmarks/:id`
+
+Returns the full `BenchmarkReport` JSON for a single report, matched by
+`run_id`.
 
 ## Architecture
 
