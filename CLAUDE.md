@@ -8,13 +8,17 @@ Key directories:
 - `src/` — TypeScript source
 - `src/graders/` — individual grader implementations (one file per grader type)
 - `src/providers/` — LLM provider wrappers (Anthropic, OpenAI, Ollama, Gemini)
+- `src/stores/` — `ResultsStore` (eval run results, `results_dir`) backends: local/S3/GCS
+- `src/stores/benchmark/` — `BenchmarkReportStore` (benchmark reports, `reports_dir`) backends: local/S3/GCS
 - `src/dashboard/` — Express server + REST API for the web dashboard
 - `dashboard-ui/` — standalone Vite + React + TypeScript app (served by Express in prod)
 - `docs/` — reference documentation kept in sync with the code
 - `examples/` — example suite YAML files, datasets, and plugins
 - `examples/datasets/` — `.jsonl` dataset files for dataset-backed evals
 - `examples/plugins/` — example custom grader plugins (`.js`)
-- `results/` — auto-saved JSON run results (gitignored)
+- `benchmarks/` — domain benchmark definitions (`<name>/tasks.yaml`), read by `evals benchmark run <name>`
+- `results/` — auto-saved JSON run results (gitignored, unless `results_dir` points at S3/GCS)
+- `reports/` — auto-saved benchmark JSON/MD reports (gitignored, unless `reports_dir` points at S3/GCS)
 - `.eval-cache/` — semantic cache for API calls (gitignored)
 - `.claude/` — Claude Code hooks and logs (hooks committed, logs gitignored)
 

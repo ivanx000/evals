@@ -32,7 +32,31 @@
 - **YAML suite inheritance** — `extends: ./base.yaml` in a child suite inherits top-level fields (child overrides) and prepends base cases before child cases; circular chains throw immediately
 - **Streaming output support** — `--stream` prints token-by-token output to stderr as each case runs (single-turn and multi-turn)
 - **Remote result storage (S3, GCS)** — `results_dir` accepts `s3://bucket/prefix` and `gs://bucket/prefix` URIs alongside local paths; `ResultsStore` interface (`src/stores/`) with `LocalResultsStore`/`S3ResultsStore`/`GCSResultsStore`, mirroring the provider-per-backend pattern; `evals diff` accepts remote URIs directly; cloud SDKs are optional peer deps, lazy-loaded only when used. See [results-storage.md](./results-storage.md)
+- **New graders** — `numeric_tolerance` (relative-error tolerance on an extracted number, for math/financial reasoning), `calibration` (structured `ANSWER:`/`CONFIDENCE:` parsing + Brier-score metadata), `json_schema` (AJV-validated structured output), `json_path` (JSONPath extraction + condition check) — see [graders.md](./graders.md)
+
+## Phase 5 — Domain Benchmarks ✅
+- **Benchmark harness** — `evals benchmark run <name>` runs a fixed, versioned
+  task set from `benchmarks/<name>/tasks.yaml` (`src/benchmark.ts`,
+  `src/benchmark-types.ts`), converts each task to a regular `EvalCase`, and
+  reports overall accuracy plus by-category/by-difficulty breakdowns.
+  `evals benchmark list` lists saved reports. See [benchmarks.md](./benchmarks.md)
+- **Calibration scoring (Brier score)** — `computeCalibration()` aggregates
+  `calibration`-graded tasks' stated confidence vs. actual correctness into a
+  Brier score with a well-calibrated/overconfident/underconfident/insufficient-data interpretation
+- **Automatic regression detection** — each benchmark run compares itself
+  against the most recent previous report for the same benchmark + model
+  (`findPreviousReport`), reporting per-task regressions/improvements and an
+  accuracy delta; exits `1` when the drop exceeds `--regression-threshold`.
+  Distinct from (and unrelated to) `evals diff`'s eval-run comparison
+- **Remote benchmark report storage (S3, GCS)** — `reports_dir` accepts
+  `s3://`/`gs://` URIs the same way `results_dir` does; `BenchmarkReportStore`
+  (`src/stores/benchmark/`) mirrors `ResultsStore` with two additions: a
+  benchmark-name-scoped `list()` (regression detection only ever needs one
+  benchmark's history) and `saveMarkdown()` for the human-readable report
+  twin. `evals dashboard --reports-dir` and `GET /api/benchmarks` read from
+  the same store. See [benchmark-storage.md](./benchmark-storage.md)
 
 ## Future Ideas
 - Fine-grained retry budgets per case
 - YAML templating
+- Free-form (non-enum) benchmark categories, for benchmarks outside the financial domain

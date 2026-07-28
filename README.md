@@ -23,6 +23,15 @@ evals run examples/summarization.yaml
 
 ## Commands
 
+### `evals init <name>`
+
+Scaffold a starter suite YAML file interactively (provider, model, description).
+
+```bash
+evals init my-suite
+evals init my-suite --yes --provider openai --model gpt-4o-mini  # non-interactive
+```
+
 ### `evals run <suite.yaml>`
 
 Run a test suite and display results in a table.
@@ -33,9 +42,36 @@ evals run examples/summarization.yaml --model claude-sonnet-4-6
 evals run examples/summarization.yaml --watch          # re-run on file save
 evals run examples/summarization.yaml --no-cache       # skip semantic cache
 evals run examples/summarization.yaml --verbose        # show full outputs + judge reasoning
+evals run examples/summarization.yaml --stream         # stream token-by-token output
 evals run examples/summarization.yaml --json out.json  # also write raw JSON to a path
 evals run examples/summarization.yaml --dataset examples/datasets/prompts.jsonl  # override dataset
+evals run examples/summarization.yaml --filter smoke   # run cases whose id/tag contains "smoke"
+evals run examples/summarization.yaml --tag smoke      # run cases explicitly tagged "smoke"
+evals run examples/summarization.yaml --dry-run        # validate YAML, no API calls
+evals run examples/summarization.yaml --batch          # submit via Anthropic Batches API (50% cost)
 ```
+
+Full flag reference (concurrency, timeout, config path, output path, ...):
+see [docs/getting-started.md](./docs/getting-started.md).
+
+### `evals batch <batchId> <suite.yaml>`
+
+Re-attach to an in-progress or completed `--batch` submission and collect results — for when a batch run was interrupted before polling finished.
+
+```bash
+evals batch msgbatch_01abc123 examples/summarization.yaml
+```
+
+### `evals benchmark run <name>` / `evals benchmark list`
+
+Run a fixed, versioned domain benchmark (`benchmarks/<name>/tasks.yaml`) and get accuracy, category/difficulty breakdowns, calibration (Brier score), and automatic regression detection against the previous run.
+
+```bash
+evals benchmark run financial-reasoning
+evals benchmark list --benchmark financial-reasoning
+```
+
+See [docs/benchmarks.md](./docs/benchmarks.md) for the `tasks.yaml` format and full flag reference.
 
 ### `evals compare <suite.yaml> --models <model1,model2,...>`
 
@@ -81,9 +117,10 @@ Spin up a local web dashboard to visualize and compare eval results.
 evals dashboard
 evals dashboard --port 8080
 evals dashboard --results-dir ./my-results
+evals dashboard --reports-dir ./my-reports   # benchmark reports, independent of --results-dir
 ```
 
-Opens a browser at `http://localhost:3000`. The dashboard shows run history, per-case breakdowns, and a side-by-side comparison view with a regression tab.
+Opens a browser at `http://localhost:3000`. The dashboard shows run history, per-case breakdowns, a side-by-side comparison view with a regression tab, and saved benchmark reports.
 
 ### `evals providers`
 
@@ -190,8 +227,12 @@ cases:
 | `regex` | Regular expression test | Pattern matches output |
 | `llm_judge` | Second LLM scores 1-5 | Score ≥ `pass_threshold` (default 3) |
 | `code_execution` | Runs extracted code + optional test assertions | Code exits 0 and assertions pass |
+| `numeric_tolerance` | Extracts the last number in the output | Within `tolerance_pct` of `value` (default 2%) |
+| `calibration` | Parses a structured `ANSWER:`/`CONFIDENCE:` block | Extracted answer equals `expected`; confidence recorded for Brier scoring |
+| `json_schema` | Validates output as JSON against a JSON Schema (AJV) | Output is valid JSON matching `schema` |
+| `json_path` | Extracts a value via JSONPath | Extracted value satisfies `equals`/`gt`/`gte`/`lt`/`lte`/`contains` |
 
-A case passes only when **all** criteria pass.
+A case passes only when **all** criteria pass. See [docs/graders.md](./docs/graders.md) for full field reference and examples of each.
 
 ## Providers
 
@@ -212,6 +253,7 @@ Copy `.evalrc.json.example` to `.evalrc.json` and adjust:
   "default_model": "claude-haiku-4-5",
   "judge_model": "claude-opus-4-8",
   "results_dir": "./results",
+  "reports_dir": "./reports",
   "cache_enabled": true
 }
 ```
@@ -225,9 +267,10 @@ API keys can be set in the config file or via environment variables — env vars
 | `GEMINI_API_KEY` | `gemini_api_key` |
 | `OLLAMA_HOST` | *(env only)* |
 
-`results_dir` also accepts `s3://bucket/prefix` or `gs://bucket/prefix` to
-store run results in S3/GCS instead of on disk — see
-[docs/results-storage.md](./docs/results-storage.md).
+`results_dir` (eval run results) and `reports_dir` (benchmark reports) each
+independently accept `s3://bucket/prefix` or `gs://bucket/prefix` instead of
+a local path — see [docs/results-storage.md](./docs/results-storage.md) and
+[docs/benchmark-storage.md](./docs/benchmark-storage.md).
 
 ## Semantic Cache
 
@@ -261,6 +304,25 @@ See `examples/plugins/sentiment_grader.js` for a full example.
 - **Terminal:** color-coded table with pass/fail, latency, cost, and per-criteria detail.
 - **JSON:** every run is auto-saved to `./results/<timestamp>_<suite>.json` for later inspection or CI diffing.
 - **Dashboard:** `evals dashboard` opens a browser UI with run history, charts, and a regression diff view.
+
+## Documentation
+
+This README covers the common path. For full detail, see `docs/`:
+
+| Doc | Covers |
+|---|---|
+| [getting-started.md](./docs/getting-started.md) | Installation, full command/flag reference, suite inheritance |
+| [writing-evals.md](./docs/writing-evals.md) | Datasets, multi-turn cases, filters |
+| [graders.md](./docs/graders.md) | Every built-in grader + custom plugin authoring |
+| [providers.md](./docs/providers.md) | Anthropic/OpenAI/Gemini/Ollama setup, pricing, adding a provider |
+| [benchmarks.md](./docs/benchmarks.md) | The `evals benchmark` domain-benchmark harness, calibration, regression |
+| [regression-detection.md](./docs/regression-detection.md) | `evals diff`, matching logic, JSON output |
+| [dashboard.md](./docs/dashboard.md) | Dashboard pages, REST API, architecture |
+| [results-storage.md](./docs/results-storage.md) | `results_dir` on S3/GCS |
+| [benchmark-storage.md](./docs/benchmark-storage.md) | `reports_dir` on S3/GCS |
+| [ci.md](./docs/ci.md) | CI recipes, GitHub Actions workflows |
+| [architecture.md](./docs/architecture.md) | Module layout, data flow, error handling, concurrency model |
+| [roadmap.md](./docs/roadmap.md) | What's built, by phase |
 
 ## Design Decisions
 
