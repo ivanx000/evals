@@ -123,6 +123,65 @@ the suite and uploads results without diffing. Use `eval.yml` if you only
 want a pass/fail gate on the suite itself; use `eval-regression.yml` when you
 want PRs to call out exactly what changed relative to `main`.
 
+## Benchmark regression in CI
+
+`evals benchmark run <name>` (see [benchmarks.md](./benchmarks.md)) has
+regression detection *built in* — every run automatically looks up the most
+recent previous report for the same benchmark + model
+(`findPreviousReport()`) and fails (exit code `1`) when accuracy drops by
+more than `--regression-threshold` points. This is a different shape of
+problem from the `evals diff` recipe above: `evals diff` just needs two named
+JSON files, but `findPreviousReport()` needs the *accumulated history* of
+past reports sitting in `reports_dir` at run time, so it can find "most
+recent report, same benchmark + model." A cache keyed by run id (approach A
+above) doesn't fit — there's no single "latest" entry to restore, there's a
+whole directory that needs to keep growing across runs.
+
+[.github/workflows/benchmark-regression.yml](../.github/workflows/benchmark-regression.yml)
+handles this with approach C from above — remote report storage — since it's
+the one option that's actually durable across accumulating runs and needs no
+cache/restore choreography:
+
+- `reports_dir` points at an `s3://` bucket (`$REPORTS_DIR` env var at the
+  top of the workflow) that acts as the permanent, shared history for this
+  benchmark.
+- **Push to main** writes straight to that bucket — each push both checks
+  for regressions against the last main-branch run *and* extends the
+  canonical history.
+- **PRs must not write into that same bucket.** If a PR's (possibly
+  regressed, possibly never-merged) run became "most recent," it would
+  poison the comparison for the next PR or the next main push. Instead, the
+  PR job `aws s3 sync`s the bucket down to a local `./reports` directory
+  read-only, runs the benchmark against that local copy — so it still diffs
+  against real main-branch history — and never syncs anything back up.
+
+To use it:
+
+1. Create the S3 bucket (or GCS bucket — swap the `aws s3 sync` step for
+   `gsutil -m rsync -r` and the AWS secrets for
+   `GOOGLE_APPLICATION_CREDENTIALS`, see
+   [benchmark-storage.md](./benchmark-storage.md)) and edit `REPORTS_DIR` at
+   the top of the workflow to point at it.
+2. Add `ANTHROPIC_API_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
+   `AWS_REGION` as repository secrets.
+3. Merge to `main` once to seed the first report — before that, every run
+   has no history to compare against, so `regression` is just `null` (not a
+   failure).
+
+The human-readable terminal summary (`printBenchmarkSummary`, which always
+includes ANSI color codes) is captured, stripped of escape codes, and
+written to `$GITHUB_STEP_SUMMARY` in a code fence — the same "make regressions
+visible on the PR checks tab" goal as `eval-regression.yml`'s diff table,
+just sourced from the benchmark's own terminal output instead of a diff.
+
+This workflow runs on every push to `main` and every PR — real, billed API
+calls each time (`financial-reasoning` uses `numeric_tolerance`, `llm_judge`,
+and `calibration`, and the latter two always require `ANTHROPIC_API_KEY`
+regardless of `--provider`). Mirrors `eval-regression.yml`'s trigger exactly;
+if that cost profile becomes a problem, moving to a schedule-only trigger or
+gating PR runs behind a label are the two straightforward alternatives — this
+just wasn't the tradeoff made here.
+
 ## Suite validation as a fast pre-flight
 
 `--dry-run` validates the YAML and prints what would run without calling any
