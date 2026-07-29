@@ -1,0 +1,126 @@
+name: Benchmark Regression Check
+
+# Runs `evals benchmark run financial-reasoning` on every push to main and
+# every PR, and fails the check when regression.threshold_exceeded is set.
+# See docs/ci.md for the full recipe and docs/benchmarks.md for how
+# regression detection works.
+#
+# Unlike eval-regression.yml (which diffs two named JSON files), benchmark
+# regression detection (findPreviousReport in src/benchmark.ts) needs the
+# *accumulated history* of past reports for this benchmark + model sitting
+# in reports_dir at run time — it always compares against whatever is most
+# recent there. So:
+#
+#   - Push to main writes straight to the canonical S3 prefix
+#     ($REPORTS_DIR below) — this is durable history, no cache
+#     eviction, shared across CI and local runs (see
+#     docs/benchmark-storage.md).
+#   - PRs must NOT write into that same canonical prefix — if they did,
+#     an in-review (possibly regressed) run would become "most recent" and
+#     poison the comparison for the next PR or the next main push. Instead,
+#     the PR job syncs the canonical history down to a local ./reports dir
+#     read-only, runs the benchmark against that local copy (so it still
+#     diffs against real main-branch history), and never syncs anything
+#     back up.
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  BENCHMARK: financial-reasoning
+  # ← change to your bucket + prefix. GCS works the same way: use a gs://
+  # URI here, swap the aws s3 sync step for `gsutil -m rsync -r`, and swap
+  # the AWS secrets below for GOOGLE_APPLICATION_CREDENTIALS. See
+  # docs/benchmark-storage.md.
+  REPORTS_DIR: s3://CHANGE-ME-benchmark-reports/ci
+
+jobs:
+  benchmark:
+    name: Run benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # PRs read the canonical history read-only so the regression check
+      # still compares against real main-branch data, without ever writing
+      # a PR run back into that shared prefix.
+      - name: Restore report history (PR only)
+        if: github.event_name == 'pull_request'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          mkdir -p reports
+          aws s3 sync "$REPORTS_DIR" ./reports
+
+      - name: Determine report directory
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "REPORT_DIR=./reports" >> "$GITHUB_ENV"
+          else
+            echo "REPORT_DIR=$REPORTS_DIR" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run benchmark
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "Skipping: ANTHROPIC_API_KEY secret not configured" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          set +e
+          node dist/cli.js benchmark run "$BENCHMARK" --report-dir "$REPORT_DIR" | tee benchmark-output.txt
+          echo "BENCHMARK_EXIT=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
+        shell: bash
+
+      - name: Write step summary
+        if: always() && hashFiles('benchmark-output.txt') != ''
+        run: |
+          {
+            echo "## Benchmark: $BENCHMARK"
+            echo
+            echo '```'
+            sed -E 's/\x1b\[[0-9;]*m//g' benchmark-output.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload reports (PR only)
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-reports-pr-${{ github.event.pull_request.number }}
+          path: reports/
+          if-no-files-found: ignore
+
+      - name: Fail on regression
+        if: always()
+        run: |
+          exit "${BENCHMARK_EXIT:-0}"
