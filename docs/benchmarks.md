@@ -190,6 +190,10 @@ benchmark's `reports_dir` subdirectory) and compares:
 No previous report for that benchmark + model combination → `regression` is
 `null` in the report (first run, or first run on a new model).
 
+See [ci.md](./ci.md#benchmark-regression-in-ci) for wiring this into GitHub
+Actions — the accumulating-history requirement here needs a different CI
+setup than `evals diff`'s two-named-files comparison.
+
 ## Extending
 
 Adding a new benchmark in an existing domain (financial reasoning) is just a
