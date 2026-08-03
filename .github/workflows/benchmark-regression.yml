@@ -31,11 +31,10 @@ on:
 
 env:
   BENCHMARK: financial-reasoning
-  # ← change to your bucket + prefix. GCS works the same way: use a gs://
-  # URI here, swap the aws s3 sync step for `gsutil -m rsync -r`, and swap
-  # the AWS secrets below for GOOGLE_APPLICATION_CREDENTIALS. See
-  # docs/benchmark-storage.md.
-  REPORTS_DIR: s3://CHANGE-ME-benchmark-reports/ci
+  # GCS works the same way: use a gs:// URI here, swap the aws s3 sync step
+  # for `gsutil -m rsync -r`, and swap the AWS secrets below for
+  # GOOGLE_APPLICATION_CREDENTIALS. See docs/benchmark-storage.md.
+  REPORTS_DIR: s3://evals-benchmark-reports-ci/ci
 
 jobs:
   benchmark:
