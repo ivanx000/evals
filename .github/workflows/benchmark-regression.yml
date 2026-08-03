@@ -29,6 +29,12 @@ on:
   pull_request:
     branches: ["main"]
 
+# Cancel superseded runs on the same ref — otherwise every push to a PR
+# branch during review queues its own full, separately-billed benchmark run.
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   BENCHMARK: financial-reasoning
   # GCS works the same way: use a gs:// URI here, swap the aws s3 sync step
@@ -64,7 +70,12 @@ jobs:
 
       # PRs read the canonical history read-only so the regression check
       # still compares against real main-branch data, without ever writing
-      # a PR run back into that shared prefix.
+      # a PR run back into that shared prefix. Forked-repo PRs don't get
+      # repo secrets from GitHub, so this soft-skips the same way the "Run
+      # benchmark" step does for a missing ANTHROPIC_API_KEY — otherwise a
+      # fork PR would hard-fail on an S3 auth error that has nothing to do
+      # with the code being reviewed. The benchmark still runs, just without
+      # a history baseline (regression: null).
       - name: Restore report history (PR only)
         if: github.event_name == 'pull_request'
         env:
@@ -73,6 +84,10 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           mkdir -p reports
+          if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+            echo "Skipping report history restore: AWS secrets not available (likely a fork PR). Regression comparison will be null." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           aws s3 sync "$REPORTS_DIR" ./reports
 
       - name: Determine report directory

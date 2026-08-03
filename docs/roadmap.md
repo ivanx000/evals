@@ -55,6 +55,14 @@
   benchmark's history) and `saveMarkdown()` for the human-readable report
   twin. `evals dashboard --reports-dir` and `GET /api/benchmarks` read from
   the same store. See [benchmark-storage.md](./benchmark-storage.md)
+- **CI regression gate** — [.github/workflows/benchmark-regression.yml](../.github/workflows/benchmark-regression.yml)
+  runs `evals benchmark run financial-reasoning` on every push to `main` and
+  every PR, writing/reading report history against a shared S3 bucket
+  (`reports_dir`) so `findPreviousReport()` has real accumulated history to
+  diff against; PRs sync that history down read-only instead of writing into
+  the shared prefix, so an unmerged run can't poison the next comparison.
+  Fails the check when `regression.threshold_exceeded`. See the "Benchmark
+  regression in CI" section of [ci.md](./ci.md)
 
 ## Future Ideas
 - Fine-grained retry budgets per case
