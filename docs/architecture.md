@@ -185,6 +185,15 @@ type in the registry, then falls back to user-land plugins (`.js` files in a
 Plugin errors are isolated — they return `{ passed: false, error: "..." }` and
 never crash the runner.
 
+Plugin files are loaded with a genuine dynamic `import()`, not `require()` —
+necessary since they're arbitrary ESM (`export default {...}`) files at a
+`file://` path. `tsc`'s `module: commonjs` target downlevels a plain
+`await import(...)` written directly in a `.ts` file into a `require()` call,
+which can do neither. `plugins.ts` instead calls into `dynamic-import.js`, a
+hand-written plain-JS file `tsc` never compiles (Node natively allows
+`import()` inside CommonJS files), so the `build` script copies it into
+`dist/` alongside the compiled output.
+
 ## Semantic cache
 
 Cache key = SHA-256 of `{ model, prompt, system_prompt, temperature, max_tokens }`.

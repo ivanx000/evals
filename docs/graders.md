@@ -551,6 +551,7 @@ A working example is included at `examples/plugins/sentiment_grader.js`.
 
 - The framework scans `graders/` in the current working directory at startup
 - Only `.js` and `.mjs` files are loaded; `.ts` files require a pre-compilation step
+- Plugin files are loaded via a genuine ESM dynamic `import()` (not `require()`), so `export default {...}` syntax works even though the project itself is CommonJS — your plugin file can also use top-level `import` statements for its own dependencies
 - Each file must export a default object with at least `{ type, run }`
 - Plugin type names must not conflict with built-in grader names (`exact_match`, `contains`, `max_words`, `regex`, `llm_judge`, `code_execution`, `numeric_tolerance`, `calibration`, `json_schema`, `json_path`)
 - Duplicate type names: the first plugin loaded wins (alphabetical file order); a warning is printed for subsequent duplicates

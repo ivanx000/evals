@@ -113,10 +113,12 @@ evals benchmark run financial-reasoning --report-dir s3://my-team-evals/reports
 | `--no-cache` | — | Disable the semantic cache |
 | `-c, --config <path>` | auto-discovered | Path to `.evalrc.json` |
 
-`llm_judge` scoring and `calibration`'s prompt-format-following requirement
-both need `ANTHROPIC_API_KEY` regardless of `--provider`, same as the
-`llm_judge` grader in regular suites — the CLI guards for this before
-running.
+`llm_judge` scoring needs `ANTHROPIC_API_KEY` regardless of `--provider`,
+same as the `llm_judge` grader in regular suites. The CLI checks the
+benchmark's `tasks.yaml` before running and only requires the key when at
+least one task actually uses `grader: llm_judge` — a benchmark made entirely
+of `numeric_tolerance`/`calibration` tasks runs fine against `--provider
+ollama` with no Anthropic key configured at all.
 
 Exit code is `1` when `report.regression?.threshold_exceeded` is true (i.e.
 accuracy dropped by more than `--regression-threshold` versus the previous

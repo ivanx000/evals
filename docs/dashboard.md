@@ -46,7 +46,7 @@ npm run dashboard:dev
 cd dashboard-ui && npm run build
 ```
 
-The compiled app lands in `dashboard-ui/dist/`. The Express server serves it as static files when it exists.
+The compiled app lands in `dashboard-ui/dist/`. The Express server serves it as static files when it exists, with a catch-all route returning `index.html` for client-side routes. That route is declared as `app.get("/*splat", ...)` — Express 5's `path-to-regexp@8` rejects a bare `"*"` wildcard, so don't simplify it back to `"*"` if you touch this code.
 
 ## Pages
 
