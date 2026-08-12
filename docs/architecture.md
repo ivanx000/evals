@@ -11,6 +11,8 @@ cli.ts              ← entry point, flag parsing, API key guards
   ├── benchmark-reporter.ts ← benchmark terminal output
   ├── dataset.ts    ← .jsonl streaming + {{variable}} substitution
   ├── plugins.ts    ← user-land grader plugin loader
+  ├── dynamic-import.js ← hand-written, untranspiled ESM import() helper
+  │                       (see "Grader registry" below)
   ├── reporter.ts   ← terminal table output (cli-table3)
   └── dashboard/    ← Express REST API server
         └── server.ts

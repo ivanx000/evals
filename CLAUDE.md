@@ -269,6 +269,34 @@ JSON files. See `docs/benchmarks.md`.
 - **YAML errors are field-level.** `loadSuite()` uses `safeParse` and formats
   each Zod issue as `• field.path: message` on separate lines.
 
+- **`evals benchmark run`'s Anthropic key gate is conditional**, mirroring
+  `checkApiKeys()`'s suite-level check: it loads the benchmark's `tasks.yaml`
+  first (`loadBenchmarkSpec()`) and only requires `ANTHROPIC_API_KEY` when a
+  task actually uses `grader: llm_judge`. It used to require the key
+  unconditionally for every benchmark, blocking `--provider ollama` runs that
+  never touch `llm_judge` at all.
+
+- **Plugin loading uses a real dynamic `import()`, not `require()`.**
+  `src/plugins.ts` needs to load user-land `.js`/`.mjs` plugin files (which
+  use `export default {...}`) from an arbitrary `file://` path. Under
+  `tsconfig.json`'s `module: commonjs`, TypeScript downlevels a plain
+  `await import(...)` written in a `.ts` file into
+  `Promise.resolve().then(() => require(...))` — and `require()` can neither
+  resolve `file://` URLs nor parse ESM `export default` syntax. The fix keeps
+  the actual `import()` call in a hand-written, untranspiled plain JS file
+  (`src/dynamic-import.js`) that `tsc` never touches — Node natively permits
+  `import()` inside CommonJS files, which is the entire reason the dynamic
+  form exists. `plugins.ts` just does a normal (tsc-compiled-to-`require`)
+  static import of that helper. Because `tsc` only compiles `.ts` files, the
+  `build` script now also copies the helper into `dist/`:
+  `"build": "tsc && cp src/dynamic-import.js dist/dynamic-import.js"` — if
+  you add another file like this, remember the copy step or it won't exist
+  in the published `dist/`. (An earlier attempt hid the `import()` call
+  behind `new Function(...)` to dodge tsc's transform — that fixed the
+  compiled build but broke `tests/plugins.test.ts`, because Vitest's own
+  module runner can only route dynamic imports it can statically see in
+  source; hiding it from tsc also hides it from Vite's transform.)
+
 ## Extending the Framework
 
 ### Grader plugin architecture
