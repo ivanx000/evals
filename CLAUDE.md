@@ -137,7 +137,12 @@ REST API endpoints served by Express:
 computing a nonsensical sibling path.
 
 In development, Vite proxies `/api/*` to Express (`vite.config.ts`).
-In production, Express serves `dashboard-ui/dist/` as static files.
+In production, Express serves `dashboard-ui/dist/` as static files, with a
+SPA-fallback route (`app.get("/*splat", ...)` in `server.ts`) that returns
+`index.html` for any non-API path. **The route must use a named wildcard**
+(`/*splat`) — Express 5's `path-to-regexp@8` rejects a bare `"*"` pattern
+(`Missing parameter name at index 1: *`), which previously made the
+dashboard crash on startup any time `dashboard-ui/dist/` existed.
 
 See `docs/dashboard.md` for full reference.
 
