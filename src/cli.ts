@@ -644,16 +644,22 @@ benchmarkCmd
       console.error("Error: GEMINI_API_KEY is required for the Gemini provider.");
       process.exit(1);
     }
-    // llm_judge always uses Anthropic
-    if (!config.anthropic_api_key) {
-      console.error("Error: ANTHROPIC_API_KEY is required for llm_judge scoring.");
-      process.exit(1);
-    }
 
     const benchmarkDir = path.resolve(`benchmarks/${name}`);
     if (!fs.existsSync(benchmarkDir)) {
       console.error(`Error: Benchmark not found at ${benchmarkDir}`);
       console.error(`  Create benchmarks/${name}/tasks.yaml to define a benchmark.`);
+      process.exit(1);
+    }
+
+    // llm_judge always uses Anthropic, regardless of the benchmark's provider —
+    // but only require the key when the benchmark actually has llm_judge tasks.
+    const hasLLMJudge = loadBenchmarkSpec(benchmarkDir).tasks.some(
+      (t) => t.grader === "llm_judge"
+    );
+    if (hasLLMJudge && !config.anthropic_api_key) {
+      console.error("Error: ANTHROPIC_API_KEY is required for llm_judge scoring.");
+      console.error("  This benchmark uses llm_judge, which always uses Anthropic.");
       process.exit(1);
     }
 
