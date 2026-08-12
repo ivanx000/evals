@@ -1,0 +1,116 @@
+name: Numeric Only Test
+version: 1.0.0
+description: 'CFA Level 1–style financial reasoning benchmark covering ratio analysis,
+  earnings interpretation, risk assessment, and core market concepts. Tasks are graded
+  via exact numeric tolerance or LLM judge rubric.
+
+  '
+tasks:
+- id: pe_ratio_basic
+  question: 'Company XYZ has a stock price of $75.00 per share and earned $5.00 per
+    share over the trailing twelve months. Calculate the price-to-earnings (P/E) ratio.
+    Provide only the final numerical answer (e.g., 15.0).
+
+    '
+  reference_answer: '15.0'
+  grader: numeric_tolerance
+  tolerance_pct: 2.0
+  difficulty: easy
+  category: ratio_analysis
+- id: current_ratio
+  question: 'A manufacturing firm reports current assets of $840,000 and current liabilities
+    of $350,000 at fiscal year-end. Calculate the current ratio to two decimal places.
+    Provide only the final numerical answer (e.g., 2.40).
+
+    '
+  reference_answer: '2.4'
+  grader: numeric_tolerance
+  tolerance_pct: 2.0
+  difficulty: easy
+  category: ratio_analysis
+- id: roe_average_equity
+  question: 'Company ABC reported net income of $126 million for the fiscal year.
+    Shareholders'' equity was $800 million at the start of the year and $1,000 million
+    at year-end. Calculate return on equity (ROE) using average equity. Express your
+    answer as a percentage (e.g., 14.0 for 14.0%).
+
+    '
+  reference_answer: '14.0'
+  grader: numeric_tolerance
+  tolerance_pct: 2.0
+  difficulty: medium
+  category: ratio_analysis
+- id: wacc_calculation
+  question: 'A company''s capital structure consists of 60% equity with a required
+    return of 12%, and 40% debt at a pre-tax cost of 5%. The marginal corporate tax
+    rate is 30%. Calculate the weighted average cost of capital (WACC). Express your
+    answer as a percentage (e.g., 8.6 for 8.6%).
+
+    '
+  reference_answer: '8.6'
+  grader: numeric_tolerance
+  tolerance_pct: 1.0
+  difficulty: medium
+  category: ratio_analysis
+- id: capm_expected_return
+  question: 'Using the Capital Asset Pricing Model (CAPM): the risk-free rate is 3.0%,
+    the equity risk premium is 6.0%, and a stock has a beta of 1.2. Calculate the
+    expected return for this stock. Express your answer as a percentage (e.g., 10.2
+    for 10.2%).
+
+    '
+  reference_answer: '10.2'
+  grader: numeric_tolerance
+  tolerance_pct: 1.0
+  difficulty: easy
+  category: ratio_analysis
+- id: revenue_growth_rate
+  question: 'A company reported revenue of $2.40 billion in fiscal year 2022 and $2.76
+    billion in fiscal year 2023. Calculate the year-over-year revenue growth rate.
+    Express your answer as a percentage (e.g., 15.0 for 15.0%).
+
+    '
+  reference_answer: '15.0'
+  grader: numeric_tolerance
+  tolerance_pct: 1.0
+  difficulty: easy
+  category: earnings_interpretation
+- id: interest_coverage_ratio
+  question: 'A company reported EBIT (earnings before interest and taxes) of $80 million
+    and paid $25 million in interest expense during the fiscal year. Calculate the
+    interest coverage ratio (also called times interest earned). Provide only the
+    final numerical answer to two decimal places (e.g., 3.20).
+
+    '
+  reference_answer: '3.2'
+  grader: numeric_tolerance
+  tolerance_pct: 2.0
+  difficulty: medium
+  category: risk_assessment
+- id: bond_duration_price_change
+  question: 'A bond has a modified duration of 7.5 years. If market interest rates
+    rise by 50 basis points (0.50 percentage points), estimate the approximate percentage
+    decrease in the bond''s price using the duration approximation. Express your answer
+    as a positive number representing the percentage price decrease (e.g., 3.75 for
+    a 3.75% decrease).
+
+    '
+  reference_answer: '3.75'
+  grader: numeric_tolerance
+  tolerance_pct: 5.0
+  difficulty: medium
+  category: market_concepts
+- id: dividend_discount_model
+  question: 'A mature utility company is expected to pay a dividend of $3.00 per share
+    next year. The dividend is expected to grow at a constant rate of 3.5% per year
+    indefinitely. Equity investors require a return of 8.5% for this stock. Using
+    the Gordon Growth Model (constant-growth DDM), calculate the intrinsic value per
+    share. Provide only the final numerical answer in dollars (e.g., 60.00 for a $60.00
+    intrinsic value).
+
+    '
+  reference_answer: '60.0'
+  grader: numeric_tolerance
+  tolerance_pct: 1.0
+  difficulty: hard
+  category: market_concepts

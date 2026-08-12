@@ -20,7 +20,7 @@ export function createServer(opts: ServerOptions): express.Express {
   const uiDist = path.resolve(__dirname, "../../dashboard-ui/dist");
   if (fs.existsSync(uiDist)) {
     app.use(express.static(uiDist));
-    app.get("*", (_req, res) => {
+    app.get("/*splat", (_req, res) => {
       res.sendFile(path.join(uiDist, "index.html"));
     });
   } else {
