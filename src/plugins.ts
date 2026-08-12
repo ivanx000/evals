@@ -16,15 +16,6 @@ const BUILTIN_TYPES = new Set([
   "json_path",
 ]);
 
-// tsc downlevels a plain `await import(...)` to `require(...)` under
-// `module: commonjs`, and require() can neither resolve file:// URLs nor
-// parse the ESM `export default` syntax plugin files use. Going through
-// `new Function` hides the specifier from tsc's static transform so this
-// stays a real dynamic import at runtime.
-const dynamicImport = new Function("specifier", "return import(specifier)") as (
-  specifier: string
-) => Promise<unknown>;
-
 export async function loadPlugins(pluginsDir?: string): Promise<Map<string, PluginGrader>> {
   const dir = pluginsDir ?? path.join(process.cwd(), "graders");
   const plugins = new Map<string, PluginGrader>();
