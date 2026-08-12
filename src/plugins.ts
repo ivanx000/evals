@@ -46,7 +46,7 @@ export async function loadPlugins(pluginsDir?: string): Promise<Map<string, Plug
     try {
       // Use a URL to ensure ESM compatibility
       const fileUrl = new URL(`file://${filePath}`);
-      mod = await import(fileUrl.toString());
+      mod = await dynamicImport(fileUrl.toString());
     } catch (err) {
       console.warn(`[plugins] Warning: failed to load ${file}: ${(err as Error).message}`);
       continue;

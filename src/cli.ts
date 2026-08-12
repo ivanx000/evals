@@ -32,6 +32,7 @@ import {
   runBenchmark,
   saveBenchmarkReportJson,
   listBenchmarkReports,
+  loadBenchmarkSpec,
 } from "./benchmark.js";
 import {
   printBenchmarkTaskProgress,
