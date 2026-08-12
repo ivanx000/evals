@@ -654,9 +654,13 @@ benchmarkCmd
 
     // llm_judge always uses Anthropic, regardless of the benchmark's provider —
     // but only require the key when the benchmark actually has llm_judge tasks.
-    const hasLLMJudge = loadBenchmarkSpec(benchmarkDir).tasks.some(
-      (t) => t.grader === "llm_judge"
-    );
+    let hasLLMJudge: boolean;
+    try {
+      hasLLMJudge = loadBenchmarkSpec(benchmarkDir).tasks.some((t) => t.grader === "llm_judge");
+    } catch (err) {
+      console.error(`Error: ${(err as Error).message}`);
+      process.exit(1);
+    }
     if (hasLLMJudge && !config.anthropic_api_key) {
       console.error("Error: ANTHROPIC_API_KEY is required for llm_judge scoring.");
       console.error("  This benchmark uses llm_judge, which always uses Anthropic.");
