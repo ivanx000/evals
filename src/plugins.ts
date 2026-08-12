@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import type { PluginGrader } from "./types.js";
+import { dynamicImport } from "./dynamic-import.js";
 
 const BUILTIN_TYPES = new Set([
   "exact_match",
