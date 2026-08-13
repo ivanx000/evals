@@ -114,6 +114,7 @@ async function _pollAndGrade(
   const batchStart = Date.now();
 
   let delay = options._pollDelayMs ?? 5_000;
+  // eslint-disable-next-line no-constant-condition -- polls until `batch.processing_status === "ended"` triggers the break below
   while (true) {
     await new Promise<void>((resolve) => setTimeout(resolve, delay));
     const batch = await anthropicProvider.batchPoll(batchId);
