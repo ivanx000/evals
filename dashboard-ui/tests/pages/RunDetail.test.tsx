@@ -44,7 +44,9 @@ describe("RunDetail page", () => {
     mockFetchOnce(run);
     renderRunDetail();
 
-    await waitFor(() => expect(screen.getByText("Summarization quality")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Summarization quality" })).toBeInTheDocument()
+    );
     expect(screen.getByText("case-pass")).toBeInTheDocument();
     expect(screen.getByText("case-fail")).toBeInTheDocument();
     expect(screen.getByText("2 shown")).toBeInTheDocument();

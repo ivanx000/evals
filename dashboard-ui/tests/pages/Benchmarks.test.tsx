@@ -50,7 +50,8 @@ describe("Benchmarks page", () => {
 
     await waitFor(() => expect(screen.getByText("task-1")).toBeInTheDocument());
     expect(screen.getByText("task-2")).toBeInTheDocument();
-    expect(screen.getByText("50.0%")).toBeInTheDocument();
+    // "50.0%" shows up in several places (run-history badge, stat card, category/difficulty rows).
+    expect(screen.getAllByText("50.0%").length).toBeGreaterThan(0);
   });
 
   it("expands a task row to show the question and answers on click", async () => {

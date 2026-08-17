@@ -182,6 +182,27 @@ dashboard-ui/
 │       ├── RunsTable.tsx
 │       ├── CaseRow.tsx
 │       └── ModelCompareTable.tsx
-├── vite.config.ts            # Proxies /api → localhost:3000
+├── tests/                     # vitest + Testing Library, mirrors src/
+├── vite.config.ts            # Proxies /api → localhost:3000; also holds the vitest `test` block
 └── tailwind.config.js        # Dark mode via class strategy
 ```
+
+## Testing the dashboard UI
+
+`dashboard-ui` has its own vitest suite (jsdom + `@testing-library/react`),
+separate from the root `npm test`:
+
+```bash
+cd dashboard-ui
+npm test          # vitest run
+npm run test:watch # vitest, interactive watch mode
+```
+
+Tests live in `dashboard-ui/tests/`, mirroring `src/` (`hooks/`,
+`components/`, `pages/`). Since the whole API surface is a handful of plain
+GET-JSON endpoints (see "REST API" below), tests stub `global.fetch` directly
+via helpers in `tests/helpers/mockFetch.ts` rather than pulling in MSW —
+see the comment there if that tradeoff needs revisiting. `tests/setup.ts`
+registers Testing Library's DOM cleanup (needed because the vitest config
+runs with `globals: false`) and a `ResizeObserver` stub that Recharts'
+`ResponsiveContainer` needs under jsdom.

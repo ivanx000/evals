@@ -38,3 +38,17 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Cache dashboard-ui node_modules
+        uses: actions/cache@v4
+        with:
+          path: dashboard-ui/node_modules
+          key: ${{ runner.os }}-node-dashboard-ui-${{ hashFiles('dashboard-ui/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-dashboard-ui-
+
+      - name: Install dashboard-ui dependencies
+        run: cd dashboard-ui && npm ci
+
+      - name: Test dashboard-ui
+        run: cd dashboard-ui && npm test
