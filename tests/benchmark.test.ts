@@ -136,6 +136,39 @@ tasks:
     );
   });
 
+  it("accepts a free-form category outside the financial domain", () => {
+    const dir = makeBenchmarkDir(`
+name: Coding Benchmark
+version: "1.0"
+tasks:
+  - id: task-1
+    question: What does this function return?
+    reference_answer: "42"
+    grader: numeric_tolerance
+    tolerance_pct: 1.0
+    difficulty: easy
+    category: control_flow
+`);
+    const spec = loadBenchmarkSpec(dir);
+    expect(spec.tasks[0].category).toBe("control_flow");
+  });
+
+  it("throws when category is blank", () => {
+    const dir = makeBenchmarkDir(`
+name: Bad Benchmark
+version: "1.0"
+tasks:
+  - id: bad-task
+    question: Question?
+    reference_answer: "42"
+    grader: numeric_tolerance
+    tolerance_pct: 1.0
+    difficulty: easy
+    category: "   "
+`);
+    expect(() => loadBenchmarkSpec(dir)).toThrow(/Benchmark spec validation failed/);
+  });
+
   it("throws when llm_judge task is missing rubric", () => {
     const dir = makeBenchmarkDir(`
 name: Bad Benchmark

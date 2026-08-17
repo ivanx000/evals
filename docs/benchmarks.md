@@ -78,7 +78,7 @@ tasks:
 | `rubric` | string | `llm_judge` only | Required — validation fails at load time if `grader: llm_judge` has no `rubric` |
 | `expected` | string | `calibration` only | Expected answer string the extracted `ANSWER:` must match (falls back to `reference_answer` if omitted) |
 | `difficulty` | `easy` \| `medium` \| `hard` | yes | Used for the by-difficulty breakdown |
-| `category` | `ratio_analysis` \| `earnings_interpretation` \| `risk_assessment` \| `market_concepts` | yes | Used for the by-category breakdown |
+| `category` | string (free-form, non-blank) | yes | Used for the by-category breakdown — any non-empty string, e.g. `ratio_analysis` or a category from an unrelated domain |
 
 `grader` maps directly onto the built-in graders documented in
 [graders.md](./graders.md) (`numeric_tolerance`, `calibration`, `llm_judge`) —
@@ -87,10 +87,12 @@ tasks:
 `ANSWER: <answer>\nCONFIDENCE: <0-100>` instruction format automatically for
 `calibration` tasks.
 
-The `category` enum above is fixed by `BenchmarkTaskSchema` in
-`src/benchmark-types.ts` (financial-domain categories, matching the shipped
-example). Adding a new benchmark in a different domain currently means
-extending that enum — see [Extending](#extending) below.
+`category` is a free-form, non-blank string validated by `BenchmarkTaskSchema`
+in `src/benchmark-types.ts` — any value works, it just becomes the grouping
+key for the by-category breakdown. The shipped example uses financial-domain
+categories (`ratio_analysis`, `earnings_interpretation`, `risk_assessment`,
+`market_concepts`), but a benchmark in a different domain can use whatever
+categories make sense for it.
 
 ## Running a benchmark
 
@@ -198,12 +200,10 @@ setup than `evals diff`'s two-named-files comparison.
 
 ## Extending
 
-Adding a new benchmark in an existing domain (financial reasoning) is just a
-new `benchmarks/<name>/tasks.yaml` file — no code changes.
-
-Adding a benchmark in a **new domain** currently requires extending
-`BenchmarkTaskSchema`'s `category` enum in `src/benchmark-types.ts` (the
-category set is fixed, not free-form, so the by-category breakdown stays a
-bounded, comparable set across runs). `difficulty` (`easy`/`medium`/`hard`)
-and `grader` (`numeric_tolerance`/`calibration`/`llm_judge`) are shared across
-all domains and don't need changes.
+Adding a new benchmark, in an existing domain or a new one, is just a new
+`benchmarks/<name>/tasks.yaml` file — no code changes. `category` is
+free-form (any non-blank string), so a new domain can define its own
+category set without touching `BenchmarkTaskSchema`. `difficulty`
+(`easy`/`medium`/`hard`) and `grader`
+(`numeric_tolerance`/`calibration`/`llm_judge`) are shared across all domains
+and don't need changes either.
