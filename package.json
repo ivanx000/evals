@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc && cp src/dynamic-import.js dist/dynamic-import.js",
-    "dev": "ts-node src/cli.ts",
+    "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
