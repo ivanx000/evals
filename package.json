@@ -17,7 +17,7 @@
     "test": "vitest run --reporter=verbose",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "dashboard:dev": "concurrently -n server,ui -c blue,green \"ts-node src/dashboard/start-dev.ts\" \"cd dashboard-ui && npm run dev\""
+    "dashboard:dev": "concurrently -n server,ui -c blue,green \"tsx src/dashboard/start-dev.ts\" \"cd dashboard-ui && npm run dev\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.56.0",
@@ -56,6 +56,7 @@
     "concurrently": "^9.2.1",
     "eslint": "^8.57.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.23.12",
     "typescript": "^5.5.2",
     "vitest": "^2.1.9"
   },
