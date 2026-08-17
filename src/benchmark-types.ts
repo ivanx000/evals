@@ -12,12 +12,7 @@ export const BenchmarkTaskSchema = z.object({
   rubric: z.string().optional(),
   expected: z.string().optional(),
   difficulty: z.enum(["easy", "medium", "hard"]),
-  category: z.enum([
-    "ratio_analysis",
-    "earnings_interpretation",
-    "risk_assessment",
-    "market_concepts",
-  ]),
+  category: z.string().trim().min(1, "category must not be blank"),
 }).refine(
   (d) => d.grader !== "llm_judge" || d.rubric !== undefined,
   { message: "llm_judge tasks require a 'rubric' field" }
