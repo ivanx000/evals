@@ -646,4 +646,43 @@ tasks:
     const report = await runBenchmark(dir, makeConfig());
     expect(report.tasks[0].confidence).toBe(72);
   });
+
+  it("uses the spec's system_prompt verbatim when set", async () => {
+    const dir = makeBenchmarkDir(`
+name: Legal Reasoning
+version: "1.0"
+system_prompt: >-
+  You are a legal analyst with expertise in case law. Answer questions
+  accurately and concisely.
+tasks:
+  - id: task-1
+    question: What is 2+2?
+    reference_answer: "4"
+    grader: numeric_tolerance
+    tolerance_pct: 1.0
+    difficulty: easy
+    category: contract_law
+`);
+    mockRunSuite.mockResolvedValue(
+      makeRunResult([makeCase("task-1", true, [{ criteria_type: "numeric_tolerance", passed: true }])])
+    );
+
+    await runBenchmark(dir, makeConfig());
+    const suitePassed = mockRunSuite.mock.calls[0][0];
+    expect(suitePassed.system_prompt).toBe(
+      "You are a legal analyst with expertise in case law. Answer questions accurately and concisely."
+    );
+  });
+
+  it("falls back to the generic default system_prompt when unset, not the financial-analyst one", async () => {
+    const dir = numericDir();
+    mockRunSuite.mockResolvedValue(
+      makeRunResult([makeCase("num-1", true, [{ criteria_type: "numeric_tolerance", passed: true }])])
+    );
+
+    await runBenchmark(dir, makeConfig());
+    const suitePassed = mockRunSuite.mock.calls[0][0];
+    expect(suitePassed.system_prompt).toBe("Answer the following question accurately and concisely.");
+    expect(suitePassed.system_prompt).not.toMatch(/financial analyst/i);
+  });
 });

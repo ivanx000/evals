@@ -94,6 +94,8 @@ function taskToEvalCase(task: BenchmarkTask) {
   };
 }
 
+const DEFAULT_SYSTEM_PROMPT = "Answer the following question accurately and concisely.";
+
 function buildEvalSuite(
   spec: BenchmarkSpec,
   model: string,
@@ -104,8 +106,7 @@ function buildEvalSuite(
     description: spec.description,
     model,
     provider: provider as EvalSuite["provider"],
-    system_prompt:
-      "You are a financial analyst with CFA-level knowledge. Answer questions accurately and concisely.",
+    system_prompt: spec.system_prompt ?? DEFAULT_SYSTEM_PROMPT,
     max_tokens: 1024,
     temperature: 0,
     cases: spec.tasks.map((t) => taskToEvalCase(t)),

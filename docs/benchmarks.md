@@ -27,6 +27,9 @@ name: "Financial Reasoning"
 version: "1.0.0"
 description: >
   Optional free-text description.
+system_prompt: >-
+  Optional system prompt sent with every task in this benchmark. Falls back
+  to a generic "answer accurately and concisely" prompt if omitted.
 
 tasks:
   - id: pe_ratio_basic
@@ -64,6 +67,7 @@ tasks:
 | `name` | string | yes | Benchmark display name — also slugified for the reports subdirectory (see [benchmark-storage.md](./benchmark-storage.md)) |
 | `version` | string | yes | Free-form version string, shown in reports |
 | `description` | string | no | Free-text description |
+| `system_prompt` | string | no | System prompt sent with every task in this benchmark. Falls back to a generic domain-neutral prompt (`"Answer the following question accurately and concisely."`, `DEFAULT_SYSTEM_PROMPT` in `src/benchmark.ts`) if omitted — set this explicitly for any benchmark that wants a persona or domain framing, e.g. the shipped `financial-reasoning` benchmark sets a CFA-analyst prompt |
 | `tasks` | array | yes, min 1 | Task definitions (below) |
 
 ### Task fields
@@ -206,4 +210,24 @@ free-form (any non-blank string), so a new domain can define its own
 category set without touching `BenchmarkTaskSchema`. `difficulty`
 (`easy`/`medium`/`hard`) and `grader`
 (`numeric_tolerance`/`calibration`/`llm_judge`) are shared across all domains
-and don't need changes either.
+and don't need changes either. A new domain should also set its own
+top-level `system_prompt` — it isn't inferred from `category`, and the
+fallback if you omit it is a generic, domain-neutral prompt, not any
+particular domain's framing:
+
+```yaml
+name: "Legal Reasoning"
+version: "1.0.0"
+system_prompt: >-
+  You are a legal analyst with expertise in case law and statutory
+  interpretation. Answer questions accurately and concisely.
+
+tasks:
+  - id: contract_breach_basic
+    question: "..."
+    reference_answer: "..."
+    grader: llm_judge
+    rubric: "..."
+    difficulty: medium
+    category: contract_law
+```

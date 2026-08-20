@@ -4,6 +4,9 @@ description: >
   CFA Level 1–style financial reasoning benchmark covering ratio analysis,
   earnings interpretation, risk assessment, and core market concepts.
   Tasks are graded via exact numeric tolerance or LLM judge rubric.
+system_prompt: >-
+  You are a financial analyst with CFA-level knowledge. Answer questions
+  accurately and concisely.
 
 tasks:
   # ── Ratio Analysis ──────────────────────────────────────────────────────────
