@@ -22,6 +22,7 @@ export const BenchmarkSpecSchema = z.object({
   name: z.string(),
   version: z.string(),
   description: z.string().optional(),
+  system_prompt: z.string().optional(),
   tasks: z.array(BenchmarkTaskSchema).min(1),
 });
 
